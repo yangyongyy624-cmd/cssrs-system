@@ -1,0 +1,24 @@
+[Unit]
+Description=C-SSRS Cloud Gateway
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/cssrs-system/backend
+Environment="PATH=/home/ubuntu/cssrs-system/backend/.venv/bin:/usr/local/bin:/usr/bin"
+Environment="CLOUD_MODE=1"
+Environment="MACMINI_URL=http://127.0.0.1:8889"
+Environment="PORT=8888"
+ExecStart=/home/ubuntu/cssrs-system/backend/.venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port 8888 --log-level info
+Restart=on-failure
+RestartSec=5
+StartLimitBurst=3
+StartLimitInterval=60
+
+# Logs
+StandardOutput=append:/home/ubuntu/cssrs-system/logs/cloud.out.log
+StandardError=append:/home/ubuntu/cssrs-system/logs/cloud.err.log
+
+[Install]
+WantedBy=multi-user.target

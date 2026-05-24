@@ -1,6 +1,11 @@
 # Data
 data/cssrs.db
 data/*.backup*
+*.db
+*.backup*
+
+# Runtime
+.cssrs.pid
 
 # Python
 __pycache__/
