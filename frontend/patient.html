@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>C-SSRS 电子评估系统</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --primary: #2563eb;
+    --primary-dark: #1d4ed8;
+    --success: #16a34a;
+    --danger: #dc2626;
+    --danger-bg: #fef2f2;
+    --danger-border: #fecaca;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-300: #d1d5db;
+    --gray-400: #9ca3af;
+    --gray-500: #6b7280;
+    --gray-600: #4b5563;
+    --gray-700: #374151;
+    --gray-800: #1f2937;
+    --gray-900: #111827;
+    --radius: 12px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+    --shadow-lg: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.06);
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro SC", "SF Pro Text",
+      "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC",
+      "Source Han Sans SC", "Microsoft YaHei", sans-serif;
+    background: var(--gray-50);
+    color: var(--gray-900);
+    line-height: 1.6;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Progress bar */
+  .progress-bar {
+    position: sticky; top: 0; z-index: 10;
+    background: white;
+    padding: 16px 20px 12px;
+    box-shadow: var(--shadow);
+  }
+  .progress-info {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 8px;
+    font-size: 14px; color: var(--gray-500);
+  }
+  .progress-track {
+    height: 6px; background: var(--gray-200); border-radius: 3px; overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; background: var(--primary); border-radius: 3px;
+    transition: width 0.4s ease;
+  }
+
+  /* Container */
+  .container {
+    max-width: 480px; margin: 0 auto;
+    padding: 24px 20px 100px;
+  }
+
+  /* Question page */
+  .question-page { display: none; }
+  .question-page.active { display: block; animation: fadeIn 0.25s ease; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .step-label {
+    font-size: 13px; font-weight: 600; color: var(--primary);
+    text-transform: uppercase; letter-spacing: 0.05em;
+    margin-bottom: 16px;
+  }
+
+  .question-title {
+    font-size: 20px; font-weight: 700; line-height: 1.45;
+    color: var(--gray-900); margin-bottom: 28px;
+  }
+
+  /* Yes/No buttons */
+  .yn-group { display: flex; flex-direction: column; gap: 12px; }
+  .yn-btn {
+    width: 100%; padding: 18px 24px; border: 2px solid var(--gray-200);
+    border-radius: var(--radius); background: white; font-size: 17px;
+    font-weight: 600; cursor: pointer; transition: all 0.15s ease;
+    text-align: center; color: var(--gray-700);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .yn-btn:active { transform: scale(0.98); }
+  .yn-btn.selected-yes {
+    border-color: var(--success); background: #f0fdf4; color: #166534;
+    box-shadow: 0 0 0 3px rgba(22,163,74,0.15);
+  }
+  .yn-btn.selected-no {
+    border-color: var(--gray-300); background: var(--gray-100); color: var(--gray-400);
+  }
+
+  /* Follow-up panel */
+  .followup {
+    display: none; margin-top: 24px; padding: 20px;
+    background: white; border-radius: var(--radius);
+    box-shadow: var(--shadow-lg); border: 1px solid var(--gray-200);
+  }
+  .followup.visible { display: block; animation: fadeIn 0.25s ease; }
+
+  .followup-title {
+    font-size: 15px; font-weight: 600; color: var(--gray-600);
+    margin-bottom: 16px; padding-bottom: 12px;
+    border-bottom: 1px solid var(--gray-100);
+  }
+
+  /* Form fields */
+  .field { margin-bottom: 18px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label {
+    display: block; font-size: 14px; font-weight: 500;
+    color: var(--gray-600); margin-bottom: 6px;
+  }
+  .field input[type="text"],
+  .field input[type="date"],
+  .field select {
+    width: 100%; padding: 12px 14px;
+    border: 1.5px solid var(--gray-200); border-radius: 8px;
+    font-size: 16px; color: var(--gray-800);
+    background: var(--gray-50);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    -webkit-appearance: none;
+  }
+  .field input:focus, .field select:focus {
+    outline: none; border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+    background: white;
+  }
+  .field select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239ca3af' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 36px;
+  }
+
+  /* Slider */
+  .slider-wrap { padding: 8px 0; }
+  .slider-wrap input[type="range"] {
+    width: 100%; height: 6px; -webkit-appearance: none; appearance: none;
+    background: linear-gradient(to right, var(--success), var(--danger));
+    border-radius: 3px; outline: none;
+  }
+  .slider-wrap input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 28px; height: 28px;
+    border-radius: 50%; background: white; border: 3px solid var(--primary);
+    box-shadow: var(--shadow); cursor: pointer;
+  }
+  .slider-labels {
+    display: flex; justify-content: space-between;
+    font-size: 12px; color: var(--gray-400); margin-top: 6px;
+  }
+  .slider-value {
+    text-align: center; font-size: 28px; font-weight: 700;
+    color: var(--gray-800); margin-bottom: 12px;
+  }
+
+  /* Red alert */
+  .red-alert {
+    display: none; margin-top: 20px; padding: 20px;
+    background: var(--danger-bg); border: 2px solid var(--danger);
+    border-radius: var(--radius); text-align: center;
+  }
+  .red-alert.visible { display: block; animation: pulseAlert 0.6s ease; }
+  @keyframes pulseAlert {
+    0% { transform: scale(0.95); opacity: 0; }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .red-alert-icon { font-size: 36px; margin-bottom: 8px; }
+  .red-alert-text {
+    font-size: 18px; font-weight: 700; color: var(--danger);
+    line-height: 1.5;
+  }
+
+  /* Navigation */
+  .nav-bar {
+    display: flex; gap: 12px; margin-top: 32px;
+  }
+  .nav-btn {
+    flex: 1; padding: 16px; border: none; border-radius: var(--radius);
+    font-size: 16px; font-weight: 600; cursor: pointer;
+    transition: all 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .nav-btn:active { transform: scale(0.98); }
+  .nav-btn:disabled {
+    opacity: 0.4; cursor: not-allowed; transform: none;
+  }
+  .nav-btn-prev {
+    background: var(--gray-100); color: var(--gray-600);
+  }
+  .nav-btn-prev:not(:disabled):hover { background: var(--gray-200); }
+  .nav-btn-next {
+    background: var(--primary); color: white;
+  }
+  .nav-btn-next:not(:disabled):hover { background: var(--primary-dark); }
+
+  /* Submit button */
+  .submit-btn {
+    width: 100%; padding: 18px; border: none; border-radius: var(--radius);
+    background: var(--success); color: white; font-size: 18px; font-weight: 700;
+    cursor: pointer; transition: all 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .submit-btn:active { transform: scale(0.98); }
+  .submit-btn:hover { background: #15803d; }
+  .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .privacy-notice {
+    text-align: center; font-size: 13px; color: var(--gray-400);
+    margin-top: 16px;
+  }
+
+  /* Error page */
+  .error-page {
+    text-align: center; padding: 60px 24px;
+  }
+  .error-icon { font-size: 48px; margin-bottom: 16px; }
+  .error-title { font-size: 22px; font-weight: 700; margin-bottom: 12px; }
+  .error-text { font-size: 15px; color: var(--gray-500); line-height: 1.6; }
+
+  /* Result page */
+  .result-page { text-align: center; padding: 20px 0; }
+  .result-icon { font-size: 56px; margin-bottom: 16px; }
+  .result-title { font-size: 24px; font-weight: 700; margin-bottom: 24px; }
+
+  .risk-badge {
+    display: inline-block; padding: 12px 28px; border-radius: 100px;
+    font-size: 18px; font-weight: 700; margin-bottom: 24px;
+  }
+  .risk-low { background: #dcfce7; color: #166534; }
+  .risk-medium { background: #fef9c3; color: #854d0e; }
+  .risk-high { background: #ffedd5; color: #9a3412; }
+  .risk-critical { background: #fecaca; color: #991b1b; }
+
+  .result-advice {
+    background: white; border-radius: var(--radius); padding: 20px;
+    box-shadow: var(--shadow); text-align: left; margin-bottom: 24px;
+  }
+  .result-advice h3 {
+    font-size: 16px; font-weight: 600; color: var(--gray-700); margin-bottom: 12px;
+  }
+  .result-advice p {
+    font-size: 15px; color: var(--gray-600); line-height: 1.7;
+  }
+
+  .wait-message {
+    font-size: 15px; color: var(--gray-500);
+    padding: 16px; background: var(--gray-100); border-radius: var(--radius);
+  }
+
+  /* Loading overlay */
+  .loading-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(255,255,255,0.85); z-index: 100;
+    justify-content: center; align-items: center;
+    flex-direction: column; gap: 16px;
+  }
+  .loading-overlay.active { display: flex; }
+  .spinner {
+    width: 36px; height: 36px; border: 3px solid var(--gray-200);
+    border-top-color: var(--primary); border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- Progress Bar (hidden on error/result pages) -->
+<div class="progress-bar" id="progressBar" style="display:none">
+  <div class="progress-info">
+    <span id="progressLabel">步骤 1/4</span>
+    <span id="progressPct">0%</span>
+  </div>
+  <div class="progress-track">
+    <div class="progress-fill" id="progressFill" style="width:0%"></div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- Error Page -->
+  <div class="question-page" id="pageError">
+    <div class="error-page">
+      <div class="error-icon">&#9888;</div>
+      <div class="error-title">无法开始评估</div>
+      <div class="error-text">
+        未找到有效的会话标识。<br>
+        请通过医生提供的链接进入评估系统，<br>
+        或联系医护人员获取帮助。
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== STEP 1: Screener ===== -->
+  <div class="question-page" id="pageScreener">
+    <div class="step-label">第一步：筛查问卷</div>
+
+    <!-- Q1 -->
+    <div id="q1Block">
+      <div class="question-title">你是否曾希望自己可以死去或不再存在？</div>
+      <div class="yn-group" id="q1Group">
+        <button class="yn-btn" data-q="i1" data-val="yes">是</button>
+        <button class="yn-btn" data-q="i1" data-val="no">否</button>
+      </div>
+      <div class="followup" id="q1Followup">
+        <div class="followup-title">补充信息</div>
+        <div class="field">
+          <label>首次发生时间</label>
+          <input type="date" id="f_i1_onset">
+        </div>
+        <div class="field">
+          <label>持续多久</label>
+          <input type="text" id="f_i1_duration" placeholder="例如：数周、数月">
+        </div>
+        <div class="field">
+          <label>频率</label>
+          <select id="f_i1_frequency">
+            <option value="">请选择</option>
+            <option value="1">少于每周1次</option>
+            <option value="2">每周1次</option>
+            <option value="3">每周2-4次</option>
+            <option value="4">每天1次</option>
+            <option value="5">每天多次</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q2 -->
+    <div id="q2Block" style="display:none; margin-top:32px;">
+      <div class="question-title">你是否有过任何伤害自己的想法？有没有想过要结束自己的生命，但还没有想到具体怎么做？</div>
+      <div class="yn-group" id="q2Group">
+        <button class="yn-btn" data-q="i2" data-val="yes">是</button>
+        <button class="yn-btn" data-q="i2" data-val="no">否</button>
+      </div>
+      <div class="followup" id="q2Followup">
+        <div class="followup-title">补充信息</div>
+        <div class="field">
+          <label>想法性质</label>
+          <input type="text" id="f_i2_nature" placeholder="请描述这些想法">
+        </div>
+        <div class="field">
+          <label>频率</label>
+          <select id="f_i2_frequency">
+            <option value="">请选择</option>
+            <option value="1">很少</option>
+            <option value="2">偶尔</option>
+            <option value="3">经常</option>
+            <option value="4">频繁</option>
+            <option value="5">持续不断</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>持续时间</label>
+          <select id="f_i2_duration">
+            <option value="">请选择</option>
+            <option value="1">几秒钟</option>
+            <option value="2">几分钟</option>
+            <option value="3">几十分钟</option>
+            <option value="4">一小时以上</option>
+            <option value="5">整天</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q3 -->
+    <div id="q3Block" style="display:none; margin-top:32px;">
+      <div class="question-title">在这些想法中，你有没有想过具体的自杀方法？</div>
+      <div class="yn-group" id="q3Group">
+        <button class="yn-btn" data-q="i3" data-val="yes">是</button>
+        <button class="yn-btn" data-q="i3" data-val="no">否</button>
+      </div>
+      <div class="followup" id="q3Followup">
+        <div class="followup-title">补充信息</div>
+        <div class="field">
+          <label>具体方法</label>
+          <input type="text" id="f_i3_method" placeholder="请描述">
+        </div>
+        <div class="field">
+          <label>地点</label>
+          <input type="text" id="f_i3_location" placeholder="在哪里">
+        </div>
+        <div class="field">
+          <label>时间计划</label>
+          <input type="text" id="f_i3_timing" placeholder="什么时候">
+        </div>
+      </div>
+    </div>
+
+    <!-- Q4 -->
+    <div id="q4Block" style="display:none; margin-top:32px;">
+      <div class="question-title">你有没有想过要真的去做，但还没有计划具体的方式？</div>
+      <div class="yn-group" id="q4Group">
+        <button class="yn-btn" data-q="i4" data-val="yes">是</button>
+        <button class="yn-btn" data-q="i4" data-val="no">否</button>
+      </div>
+      <div class="followup" id="q4Followup">
+        <div class="followup-title">意图强度评估</div>
+        <div class="slider-value" id="i4SliderVal">0</div>
+        <div class="slider-wrap">
+          <input type="range" id="f_i4_intent" min="0" max="10" value="0">
+          <div class="slider-labels">
+            <span>0 无意图</span>
+            <span>10 最强意图</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q5 -->
+    <div id="q5Block" style="display:none; margin-top:32px;">
+      <div class="question-title">你有没有想过具体的自杀方法，并且也打算真正去做？</div>
+      <div class="yn-group" id="q5Group">
+        <button class="yn-btn" data-q="i5" data-val="yes">是</button>
+        <button class="yn-btn" data-q="i5" data-val="no">否</button>
+      </div>
+      <div class="red-alert" id="i5Alert">
+        <div class="red-alert-icon">&#9888;</div>
+        <div class="red-alert-text">
+          最高风险等级<br>需要立即干预
+        </div>
+      </div>
+    </div>
+
+    <div class="nav-bar">
+      <button class="nav-btn nav-btn-prev" disabled>上一步</button>
+      <button class="nav-btn nav-btn-next" id="screenerNext">下一步</button>
+    </div>
+  </div>
+
+  <!-- ===== STEP 2: Intensity (only if Q1=yes) ===== -->
+  <div class="question-page" id="pageIntensity">
+    <div class="step-label">第二步：强度评估</div>
+
+    <div class="question-title">这些想法多久出现一次？</div>
+    <div class="yn-group" id="intFrequency" data-field="frequency">
+      <button class="yn-btn opt-btn" data-val="1">少于每周1次</button>
+      <button class="yn-btn opt-btn" data-val="2">每周1次</button>
+      <button class="yn-btn opt-btn" data-val="3">每周2-4次</button>
+      <button class="yn-btn opt-btn" data-val="4">每天1次</button>
+      <button class="yn-btn opt-btn" data-val="5">每天多次</button>
+    </div>
+
+    <div class="question-title" style="margin-top:28px">每次想法大约持续多长时间？</div>
+    <div class="yn-group" id="intDuration" data-field="duration">
+      <button class="yn-btn opt-btn" data-val="1">几秒钟</button>
+      <button class="yn-btn opt-btn" data-val="2">几分钟</button>
+      <button class="yn-btn opt-btn" data-val="3">几十分钟</button>
+      <button class="yn-btn opt-btn" data-val="4">一小时以上</button>
+      <button class="yn-btn opt-btn" data-val="5">整天</button>
+    </div>
+
+    <div class="question-title" style="margin-top:28px">你觉得能控制这些想法吗？</div>
+    <div class="yn-group" id="intControl" data-field="controllability">
+      <button class="yn-btn opt-btn" data-val="1">完全能控制</button>
+      <button class="yn-btn opt-btn" data-val="2">大多时候能控制</button>
+      <button class="yn-btn opt-btn" data-val="3">有时能控制</button>
+      <button class="yn-btn opt-btn" data-val="4">很少能控制</button>
+      <button class="yn-btn opt-btn" data-val="5">完全不能控制</button>
+    </div>
+
+    <div class="question-title" style="margin-top:28px">有什么阻止你采取行动的理由吗？</div>
+    <div class="yn-group" id="intDeterrent" data-field="deterrents">
+      <button class="yn-btn opt-btn" data-val="1">有很多理由</button>
+      <button class="yn-btn opt-btn" data-val="2">有一些理由</button>
+      <button class="yn-btn opt-btn" data-val="3">理由不多</button>
+      <button class="yn-btn opt-btn" data-val="4">只有很少理由</button>
+      <button class="yn-btn opt-btn" data-val="5">没有任何理由</button>
+    </div>
+
+    <div class="question-title" style="margin-top:28px">你是否有过任何准备行动？</div>
+    <div class="yn-group" id="intReason" data-field="reason">
+      <button class="yn-btn opt-btn" data-val="1">完全没有</button>
+      <button class="yn-btn opt-btn" data-val="2">很少</button>
+      <button class="yn-btn opt-btn" data-val="3">偶尔</button>
+      <button class="yn-btn opt-btn" data-val="4">经常</button>
+      <button class="yn-btn opt-btn" data-val="5">已经有具体行为</button>
+    </div>
+
+    <div class="nav-bar">
+      <button class="nav-btn nav-btn-prev" id="intensityPrev">上一步</button>
+      <button class="nav-btn nav-btn-next" id="intensityNext">下一步</button>
+    </div>
+  </div>
+
+  <!-- ===== STEP 3: Behavior ===== -->
+  <div class="question-page" id="pageBehavior">
+    <div class="step-label">第三步：行为筛查</div>
+
+    <!-- B1 -->
+    <div id="b1Block">
+      <div class="question-title">你有没有真正地尝试过结束自己的生命？</div>
+      <div class="yn-group" id="b1Group">
+        <button class="yn-btn" data-q="b1" data-val="yes">是</button>
+        <button class="yn-btn" data-q="b1" data-val="no">否</button>
+      </div>
+      <div class="followup" id="b1Followup">
+        <div class="followup-title">补充信息</div>
+        <div class="field">
+          <label>日期</label>
+          <input type="date" id="f_b1_date">
+        </div>
+        <div class="field">
+          <label>方法</label>
+          <input type="text" id="f_b1_method" placeholder="请描述">
+        </div>
+        <div class="field">
+          <label>是否有医学伤害？</label>
+          <div class="yn-group" id="b1MedicalGroup" style="margin-top:4px">
+            <button class="yn-btn" data-sub="b1_medical" data-val="yes">是</button>
+            <button class="yn-btn" data-sub="b1_medical" data-val="no">否</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>是否有致死意图？</label>
+          <div class="yn-group" id="b1LethalGroup" style="margin-top:4px">
+            <button class="yn-btn" data-sub="b1_lethal" data-val="yes">是</button>
+            <button class="yn-btn" data-sub="b1_lethal" data-val="no">否</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>是否接受医疗干预？</label>
+          <div class="yn-group" id="b1InterventionGroup" style="margin-top:4px">
+            <button class="yn-btn" data-sub="b1_intervention" data-val="yes">是</button>
+            <button class="yn-btn" data-sub="b1_intervention" data-val="no">否</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- B2 -->
+    <div id="b2Block" style="display:none; margin-top:32px;">
+      <div class="question-title">你有没有开始做但在真正开始伤害自己之前被阻止了？</div>
+      <div class="yn-group" id="b2Group">
+        <button class="yn-btn" data-q="b2" data-val="yes">是</button>
+        <button class="yn-btn" data-q="b2" data-val="no">否</button>
+      </div>
+      <div class="followup" id="b2Followup">
+        <div class="followup-title">补充信息</div>
+        <div class="field">
+          <label>日期</label>
+          <input type="date" id="f_b2_date">
+        </div>
+        <div class="field">
+          <label>计划方法</label>
+          <input type="text" id="f_b2_method" placeholder="请描述">
+        </div>
+        <div class="field">
+          <label>被什么阻止？</label>
+          <input type="text" id="f_b2_interrupted_by" placeholder="请描述">
+        </div>
+      </div>
+    </div>
+
+    <!-- B3 -->
+    <div id="b3Block" style="display:none; margin-top:32px;">
+      <div class="question-title">你有没有开始做但在真正开始伤害自己之前自己决定不继续了？</div>
+      <div class="yn-group" id="b3Group">
+        <button class="yn-btn" data-q="b3" data-val="yes">是</button>
+        <button class="yn-btn" data-q="b3" data-val="no">否</button>
+      </div>
+      <div class="followup" id="b3Followup">
+        <div class="followup-title">补充信息</div>
+        <div class="field">
+          <label>日期</label>
+          <input type="date" id="f_b3_date">
+        </div>
+        <div class="field">
+          <label>计划方法</label>
+          <input type="text" id="f_b3_method" placeholder="请描述">
+        </div>
+        <div class="field">
+          <label>什么让你停下来？</label>
+          <input type="text" id="f_b3_stopped_by" placeholder="请描述">
+        </div>
+      </div>
+    </div>
+
+    <!-- B4 -->
+    <div id="b4Block" style="display:none; margin-top:32px;">
+      <div class="question-title">你有没有做过任何事情来准备自杀？比如收集药片、获取武器等？</div>
+      <div class="yn-group" id="b4Group">
+        <button class="yn-btn" data-q="b4" data-val="yes">是</button>
+        <button class="yn-btn" data-q="b4" data-val="no">否</button>
+      </div>
+      <div class="followup" id="b4Followup">
+        <div class="followup-title">补充信息</div>
+        <div class="field">
+          <label>具体行为</label>
+          <input type="text" id="f_b4_behavior" placeholder="请描述">
+        </div>
+        <div class="field">
+          <label>日期</label>
+          <input type="date" id="f_b4_date">
+        </div>
+        <div class="field">
+          <label>是否有具体计划？</label>
+          <div class="yn-group" id="b4PlanGroup" style="margin-top:4px">
+            <button class="yn-btn" data-sub="b4_plan" data-val="yes">是</button>
+            <button class="yn-btn" data-sub="b4_plan" data-val="no">否</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- B5 -->
+    <div id="b5Block" style="display:none; margin-top:32px;">
+      <div class="question-title">你有没有故意伤害过自己但不想死？</div>
+      <div class="yn-group" id="b5Group">
+        <button class="yn-btn" data-q="b5" data-val="yes">是</button>
+        <button class="yn-btn" data-q="b5" data-val="no">否</button>
+      </div>
+      <div class="followup" id="b5Followup">
+        <div class="followup-title">补充信息</div>
+        <div class="field">
+          <label>行为类型</label>
+          <input type="text" id="f_b5_behavior_type" placeholder="请描述">
+        </div>
+        <div class="field">
+          <label>频率</label>
+          <input type="text" id="f_b5_frequency" placeholder="例如：偶尔、经常">
+        </div>
+        <div class="field">
+          <label>动机</label>
+          <input type="text" id="f_b5_motivation" placeholder="请描述">
+        </div>
+      </div>
+    </div>
+
+    <div class="nav-bar">
+      <button class="nav-btn nav-btn-prev" id="behaviorPrev">上一步</button>
+      <button class="nav-btn nav-btn-next" id="behaviorNext">下一步</button>
+    </div>
+  </div>
+
+  <!-- ===== STEP 4: Submit ===== -->
+  <div class="question-page" id="pageSubmit">
+    <div class="step-label">第四步：提交评估</div>
+    <div class="question-title">确认无误后，点击下方按钮提交评估</div>
+    <button class="submit-btn" id="submitBtn">提交评估</button>
+    <div class="privacy-notice">您的回答将严格保密，仅用于医疗评估目的</div>
+  </div>
+
+  <!-- ===== Result Page ===== -->
+  <div class="question-page" id="pageResult">
+    <div class="result-page">
+      <div class="result-icon" id="resultIcon"></div>
+      <div class="result-title">评估已完成</div>
+      <div class="risk-badge" id="riskBadge"></div>
+      <div class="result-advice" id="resultAdvice">
+        <h3>处理建议</h3>
+        <p id="resultAdviceText"></p>
+      </div>
+      <div class="wait-message">请等待医生查看报告，不要离开此页面</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div style="font-size:15px;color:var(--gray-500)">正在提交...</div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  // Parse session_id
+  const params = new URLSearchParams(window.location.search);
+  const sessionId = params.get('session') || params.get('session_id');
+
+  // State
+  const state = {
+    answers: {
+      i1: null, i2: null, i3: null, i4: null, i5: null,
+      b1: null, b2: null, b3: null, b4: null, b5: null,
+      b1_medical: null, b1_lethal: null, b1_intervention: null,
+      b4_plan: null
+    },
+    followup: {},
+    intensity: { frequency: null, duration: null, controllability: null, deterrents: null, reason: null },
+    currentSection: 0,
+    q1Answered: false
+  };
+
+  const sections = ['pageScreener', 'pageIntensity', 'pageBehavior', 'pageSubmit'];
+  const sectionLabels = ['步骤 1/4', '步骤 2/4', '步骤 3/4', '步骤 4/4'];
+
+  // Show page
+  function showPage(id) {
+    document.querySelectorAll('.question-page').forEach(p => p.classList.remove('active'));
+    const page = document.getElementById(id);
+    if (page) page.classList.add('active');
+  }
+
+  // Update progress
+  function updateProgress() {
+    const total = sections.length;
+    const current = state.currentSection + 1;
+    const pct = Math.round(((state.currentSection) / (total - 1)) * 100);
+    document.getElementById('progressLabel').textContent = sectionLabels[state.currentSection];
+    document.getElementById('progressPct').textContent = pct + '%';
+    document.getElementById('progressFill').style.width = pct + '%';
+  }
+
+  // Show section
+  function showSection(index) {
+    state.currentSection = index;
+    showPage(sections[index]);
+    updateProgress();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // Get visible sections (intensity skipped if Q1=no)
+  function getVisibleSections() {
+    if (state.answers.i1 === true) return sections;
+    return sections.filter(s => s !== 'pageIntensity');
+  }
+
+  // Yes/No button handler
+  function handleYnClick(btn) {
+    const q = btn.dataset.q;
+    const sub = btn.dataset.sub;
+    const val = btn.dataset.val;
+    const isYes = val === 'yes';
+
+    if (sub) {
+      // Sub-question inside behavior followup
+      state.answers[sub] = isYes;
+      const group = btn.parentElement;
+      group.querySelectorAll('.yn-btn').forEach(b => {
+        b.classList.remove('selected-yes', 'selected-no');
+      });
+      btn.classList.add(isYes ? 'selected-yes' : 'selected-no');
+      return;
+    }
+
+    state.answers[q] = isYes;
+    const group = btn.parentElement;
+    group.querySelectorAll('.yn-btn').forEach(b => {
+      b.classList.remove('selected-yes', 'selected-no');
+    });
+    btn.classList.add(isYes ? 'selected-yes' : 'selected-no');
+
+    // Handle followup visibility
+    if (q === 'i1') {
+      state.q1Answered = true;
+      document.getElementById('q1Followup').classList.toggle('visible', isYes);
+      document.getElementById('q2Block').style.display = isYes ? 'block' : 'none';
+      if (!isYes) {
+        state.answers.i2 = null; state.answers.i3 = null;
+        state.answers.i4 = null; state.answers.i5 = null;
+        document.getElementById('q3Block').style.display = 'none';
+        document.getElementById('q4Block').style.display = 'none';
+        document.getElementById('q5Block').style.display = 'none';
+      }
+    }
+    if (q === 'i2') {
+      document.getElementById('q2Followup').classList.toggle('visible', isYes);
+      document.getElementById('q3Block').style.display = isYes ? 'block' : 'none';
+      if (!isYes) {
+        state.answers.i3 = null; state.answers.i4 = null; state.answers.i5 = null;
+        document.getElementById('q4Block').style.display = 'none';
+        document.getElementById('q5Block').style.display = 'none';
+      }
+    }
+    if (q === 'i3') {
+      document.getElementById('q3Followup').classList.toggle('visible', isYes);
+      document.getElementById('q4Block').style.display = isYes ? 'block' : 'none';
+      if (!isYes) {
+        state.answers.i4 = null; state.answers.i5 = null;
+        document.getElementById('q5Block').style.display = 'none';
+      }
+    }
+    if (q === 'i4') {
+      document.getElementById('q4Followup').classList.toggle('visible', isYes);
+      document.getElementById('q5Block').style.display = isYes ? 'block' : 'none';
+      if (!isYes) {
+        state.answers.i5 = null;
+      }
+    }
+    if (q === 'i5') {
+      document.getElementById('i5Alert').classList.toggle('visible', isYes);
+    }
+    if (q === 'b1') {
+      document.getElementById('b1Followup').classList.toggle('visible', isYes);
+      document.getElementById('b2Block').style.display = isYes ? 'block' : 'none';
+      if (!isYes) {
+        state.answers.b2 = null; state.answers.b3 = null;
+        state.answers.b4 = null; state.answers.b5 = null;
+        document.getElementById('b3Block').style.display = 'none';
+        document.getElementById('b4Block').style.display = 'none';
+        document.getElementById('b5Block').style.display = 'none';
+      }
+    }
+    if (q === 'b2') {
+      document.getElementById('b2Followup').classList.toggle('visible', isYes);
+      document.getElementById('b3Block').style.display = isYes ? 'block' : 'none';
+      if (!isYes) {
+        state.answers.b3 = null; state.answers.b4 = null; state.answers.b5 = null;
+        document.getElementById('b4Block').style.display = 'none';
+        document.getElementById('b5Block').style.display = 'none';
+      }
+    }
+    if (q === 'b3') {
+      document.getElementById('b3Followup').classList.toggle('visible', isYes);
+      document.getElementById('b4Block').style.display = isYes ? 'block' : 'none';
+      if (!isYes) {
+        state.answers.b4 = null; state.answers.b5 = null;
+        document.getElementById('b5Block').style.display = 'none';
+      }
+    }
+    if (q === 'b4') {
+      document.getElementById('b4Followup').classList.toggle('visible', isYes);
+      document.getElementById('b5Block').style.display = isYes ? 'block' : 'none';
+      if (!isYes) {
+        state.answers.b5 = null;
+      }
+    }
+    if (q === 'b5') {
+      document.getElementById('b5Followup').classList.toggle('visible', isYes);
+    }
+  }
+
+  // Collect followup field values
+  function collectFollowups() {
+    const g = (id) => {
+      const el = document.getElementById(id);
+      return el ? el.value.trim() || null : null;
+    };
+    state.followup = {
+      i1_onset: g('f_i1_onset'),
+      i1_duration: g('f_i1_duration'),
+      i1_frequency: g('f_i1_frequency') ? parseInt(g('f_i1_frequency')) : null,
+      i2_nature: g('f_i2_nature'),
+      i2_frequency: g('f_i2_frequency') ? parseInt(g('f_i2_frequency')) : null,
+      i2_duration: g('f_i2_duration') ? parseInt(g('f_i2_duration')) : null,
+      i3_method: g('f_i3_method'),
+      i3_location: g('f_i3_location'),
+      i3_timing: g('f_i3_timing'),
+      i4_intent_strength: g('f_i4_intent') ? parseInt(g('f_i4_intent')) : null,
+      b1_date: g('f_b1_date') || null,
+      b1_method: g('f_b1_method'),
+      b2_date: g('f_b2_date') || null,
+      b2_method: g('f_b2_method'),
+      b2_interrupted_by: g('f_b2_interrupted_by'),
+      b3_date: g('f_b3_date') || null,
+      b3_method: g('f_b3_method'),
+      b3_stopped_by: g('f_b3_stopped_by'),
+      b4_behavior: g('f_b4_behavior'),
+      b4_date: g('f_b4_date') || null,
+      b5_behavior_type: g('f_b5_behavior_type'),
+      b5_frequency: g('f_b5_frequency'),
+      b5_motivation: g('f_b5_motivation')
+    };
+  }
+
+  // Compute risk level
+  function computeRisk() {
+    const a = state.answers;
+    if (a.i5 === true) return { level: 'critical', label: '最高风险', advice: '需要立即干预。请保持当前状态，医护人员将马上到达。如有紧急危险，请立即拨打120。' };
+    if (a.i4 === true || a.b1 === true || a.b2 === true) return { level: 'high', label: '高风险', advice: '需要尽快安排精神科医生面谈评估。在医生到达前，请确保有陪护人员在身边。' };
+    if (a.i3 === true || a.b4 === true) return { level: 'medium', label: '中等风险', advice: '建议在24小时内由精神科医生进行全面评估。请保持与医护人员的联系。' };
+    if (a.i2 === true || a.i1 === true) return { level: 'low', label: '低风险', advice: '存在自杀意念但无具体计划或行为。建议定期随访和持续观察。' };
+    return { level: 'none', label: '未检出风险', advice: '本次筛查未检出明显的自杀风险。建议常规心理健康随访。' };
+  }
+
+  // Compute lethality score (0-5)
+  function computeLethality() {
+    let score = 0;
+    const a = state.answers;
+    if (a.i1 === true) score++;
+    if (a.i2 === true) score++;
+    if (a.i3 === true) score++;
+    if (a.i4 === true) score++;
+    if (a.i5 === true) score++;
+    if (a.b1 === true) score = Math.max(score, 5);
+    else if (a.b2 === true || a.b4 === true) score = Math.max(score, 4);
+    else if (a.b3 === true) score = Math.max(score, 3);
+    return score;
+  }
+
+  // Build JSON payload
+  function buildPayload() {
+    const a = state.answers;
+    const f = state.followup;
+    return {
+      session_id: sessionId,
+      ideation: {
+        i1_wish_dead: a.i1 === true,
+        i1_onset: f.i1_onset,
+        i1_duration: f.i1_duration,
+        i1_frequency: f.i1_frequency || null,
+        i2_non_specific: a.i2 === true,
+        i2_nature: f.i2_nature || null,
+        i2_frequency: f.i2_frequency || null,
+        i2_duration: f.i2_duration || null,
+        i3_with_method: a.i3 === true,
+        i3_method: f.i3_method || null,
+        i3_location: f.i3_location || null,
+        i3_timing: f.i3_timing || null,
+        i4_with_intent: a.i4 === true,
+        i4_intent_strength: f.i4_intent_strength !== null ? f.i4_intent_strength : null,
+        i5_with_plan_and_intent: a.i5 === true
+      },
+      intensity: {
+        frequency: state.intensity.frequency,
+        duration: state.intensity.duration,
+        controllability: state.intensity.controllability,
+        deterrents: state.intensity.deterrents,
+        reason: state.intensity.reason
+      },
+      behavior: {
+        b1_actual_attempt: a.b1 === true,
+        b1_date: f.b1_date || null,
+        b1_method: f.b1_method || null,
+        b1_medical_damage: a.b1_medical === true,
+        b1_lethal_intent: a.b1_lethal === true,
+        b1_medical_intervention: a.b1_intervention === true,
+        b2_interrupted: a.b2 === true,
+        b2_date: f.b2_date || null,
+        b2_method: f.b2_method || null,
+        b2_interrupted_by: f.b2_interrupted_by || null,
+        b3_aborted: a.b3 === true,
+        b3_date: f.b3_date || null,
+        b3_method: f.b3_method || null,
+        b3_stopped_by: f.b3_stopped_by || null,
+        b4_preparatory: a.b4 === true,
+        b4_behavior: f.b4_behavior || null,
+        b4_date: f.b4_date || null,
+        b4_has_plan: a.b4_plan === true,
+        b5_nssi: a.b5 === true,
+        b5_behavior_type: f.b5_behavior_type || null,
+        b5_frequency: f.b5_frequency || null,
+        b5_motivation: f.b5_motivation || null
+      },
+      lethality: computeLethality()
+    };
+  }
+
+  // Submit
+  async function submitAssessment() {
+    collectFollowups();
+    const payload = buildPayload();
+    const overlay = document.getElementById('loadingOverlay');
+    overlay.classList.add('active');
+
+    try {
+      const resp = await fetch('/api/assess/' + encodeURIComponent(sessionId), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!resp.ok) {
+        throw new Error('HTTP ' + resp.status);
+      }
+
+      showResult();
+    } catch (err) {
+      console.error('Submit failed:', err);
+      overlay.classList.remove('active');
+      // Still show result page -- data may have been saved
+      // In production, show a retry dialog
+      alert('提交失败，请检查网络连接后重试');
+    }
+  }
+
+  // Show result
+  function showResult() {
+    document.getElementById('loadingOverlay').classList.remove('active');
+    document.getElementById('progressBar').style.display = 'none';
+
+    const risk = computeRisk();
+    const icon = document.getElementById('resultIcon');
+    const badge = document.getElementById('riskBadge');
+    const adviceText = document.getElementById('resultAdviceText');
+
+    const icons = { critical: '⚠️', high: '🚨', medium: '⚡', low: '🛡️', none: '✅' };
+    const classes = { critical: 'risk-critical', high: 'risk-high', medium: 'risk-medium', low: 'risk-low', none: 'risk-low' };
+
+    icon.textContent = icons[risk.level] || '✅';
+    badge.textContent = '风险等级：' + risk.label;
+    badge.className = 'risk-badge ' + (classes[risk.level] || 'risk-low');
+    adviceText.textContent = risk.advice;
+
+    showPage('pageResult');
+  }
+
+  // Intensity option buttons
+  function handleIntensityClick(btn) {
+    const group = btn.parentElement;
+    const field = group.dataset.field;
+    const val = parseInt(btn.dataset.val);
+
+    group.querySelectorAll('.opt-btn').forEach(b => {
+      b.classList.remove('selected-yes', 'selected-no');
+    });
+    btn.classList.add('selected-yes');
+    state.intensity[field] = val;
+  }
+
+  // Init
+  function init() {
+    if (!sessionId) {
+      showPage('pageError');
+      return;
+    }
+
+    document.getElementById('progressBar').style.display = 'block';
+
+    // Wire up all yes/no buttons
+    document.querySelectorAll('.yn-btn[data-q], .yn-btn[data-sub]').forEach(btn => {
+      btn.addEventListener('click', function() { handleYnClick(this); });
+    });
+
+    // Wire up intensity option buttons
+    document.querySelectorAll('.opt-btn').forEach(btn => {
+      btn.addEventListener('click', function() { handleIntensityClick(this); });
+    });
+
+    // Slider
+    const slider = document.getElementById('f_i4_intent');
+    const sliderVal = document.getElementById('i4SliderVal');
+    if (slider && sliderVal) {
+      slider.addEventListener('input', function() {
+        sliderVal.textContent = this.value;
+      });
+    }
+
+    // Nav: Screener -> next
+    document.getElementById('screenerNext').addEventListener('click', function() {
+      collectFollowups();
+      if (state.answers.i1 === true) {
+        showSection(1); // intensity
+      } else {
+        showSection(2); // behavior (skip intensity)
+      }
+    });
+
+    // Nav: Intensity prev/next
+    document.getElementById('intensityPrev').addEventListener('click', function() {
+      showSection(0);
+    });
+    document.getElementById('intensityNext').addEventListener('click', function() {
+      showSection(2);
+    });
+
+    // Nav: Behavior prev/next
+    document.getElementById('behaviorPrev').addEventListener('click', function() {
+      if (state.answers.i1 === true) {
+        showSection(1);
+      } else {
+        showSection(0);
+      }
+    });
+    document.getElementById('behaviorNext').addEventListener('click', function() {
+      collectFollowups();
+      showSection(3);
+    });
+
+    // Submit
+    document.getElementById('submitBtn').addEventListener('click', submitAssessment);
+
+    // Show first section
+    showSection(0);
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>

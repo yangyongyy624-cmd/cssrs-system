@@ -1,0 +1,1254 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>C-SSRS 电子评估系统</title>
+
+<!-- PWA -->
+<meta name="theme-color" content="#2563EB">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="C-SSRS">
+<link rel="apple-touch-icon" href="icons/icon-192x192.png">
+<link rel="manifest" href="manifest.json">
+
+<!-- PWA install hint -->
+<style>
+  .install-hint {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #2563EB;
+    color: white;
+    padding: 14px 20px;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 9999;
+    display: none;
+  }
+  .install-hint.show { display: flex; }
+  .install-hint .close-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 0 0 0 16px;
+  }
+</style>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --white: #FFFFFF;
+    --bg: #F5F7FA;
+    --border: #E2E8F0;
+    --text: #1E293B;
+    --text-secondary: #64748B;
+    --primary: #2563EB;
+    --primary-hover: #1D4ED8;
+    --risk-none: #22C55E;
+    --risk-low: #EAB308;
+    --risk-medium: #FFA500;
+    --risk-high: #FF4444;
+    --risk-critical: #8B0000;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+    --shadow-lg: 0 10px 25px rgba(0,0,0,0.08);
+    --radius: 8px;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* Header */
+  .header {
+    background: var(--white);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+
+  .header-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .header-brand-icon {
+    width: 32px;
+    height: 32px;
+    background: var(--primary);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+  }
+
+  .btn-primary {
+    background: var(--primary);
+    color: white;
+  }
+  .btn-primary:hover { background: var(--primary-hover); }
+
+  .btn-secondary {
+    background: var(--white);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { background: var(--bg); }
+
+  .btn-sm { padding: 6px 12px; font-size: 13px; }
+
+  /* Container */
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px 32px;
+  }
+
+  /* Toolbar */
+  .toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    gap: 16px;
+  }
+
+  .search-box {
+    position: relative;
+    flex: 0 1 320px;
+  }
+
+  .search-box input {
+    width: 100%;
+    padding: 8px 12px 8px 36px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+    background: var(--white);
+    transition: border-color 0.15s;
+  }
+
+  .search-box input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+  }
+
+  .search-box::before {
+    content: "";
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394A3B8' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'/%3E%3C/svg%3E");
+    background-size: contain;
+    background-repeat: no-repeat;
+  }
+
+  .stat-summary {
+    display: flex;
+    gap: 20px;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+
+  .stat-summary span strong {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  /* Table */
+  .card {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+
+  thead {
+    background: #F8FAFC;
+    border-bottom: 2px solid var(--border);
+  }
+
+  th {
+    padding: 12px 16px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+
+  tbody tr {
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+
+  tbody tr:hover {
+    background: #F0F7FF;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  /* Risk badge */
+  .risk-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .risk-badge .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+  }
+
+  .risk-none { background: #F0FDF4; color: #15803D; }
+  .risk-none .dot { background: var(--risk-none); }
+  .risk-low { background: #FEFCE8; color: #A16207; }
+  .risk-low .dot { background: var(--risk-low); }
+  .risk-medium { background: #FFF7ED; color: #C2410C; }
+  .risk-medium .dot { background: var(--risk-medium); }
+  .risk-high { background: #FEF2F2; color: #DC2626; }
+  .risk-high .dot { background: var(--risk-high); }
+  .risk-critical { background: #FEE2E2; color: #991B1B; }
+  .risk-critical .dot { background: var(--risk-critical); }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-secondary);
+  }
+
+  .empty-state-icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+    opacity: 0.4;
+  }
+
+  .empty-state p {
+    font-size: 14px;
+  }
+
+  /* Report view */
+  .report-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+
+  .report-title {
+    font-size: 20px;
+    font-weight: 700;
+  }
+
+  .report-subtitle {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+  }
+
+  .report-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  .report-section {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+
+  .report-section.full-width {
+    grid-column: 1 / -1;
+  }
+
+  .section-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    background: #FAFBFC;
+  }
+
+  .section-body {
+    padding: 20px;
+  }
+
+  .info-row {
+    display: flex;
+    padding: 8px 0;
+    border-bottom: 1px solid #F1F5F9;
+    font-size: 14px;
+  }
+
+  .info-row:last-child { border-bottom: none; }
+
+  .info-label {
+    width: 140px;
+    flex-shrink: 0;
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+
+  .info-value {
+    flex: 1;
+    color: var(--text);
+  }
+
+  /* Risk display in report */
+  .risk-display {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    border-radius: var(--radius);
+    margin-bottom: 16px;
+  }
+
+  .risk-display .risk-badge {
+    font-size: 15px;
+    padding: 6px 16px;
+  }
+
+  .risk-display .risk-badge .dot {
+    width: 9px;
+    height: 9px;
+  }
+
+  .risk-description {
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+
+  /* Dimension breakdown */
+  .dimension-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-top: 12px;
+  }
+
+  .dimension-item {
+    text-align: center;
+    padding: 12px 8px;
+    background: #F8FAFC;
+    border-radius: 6px;
+  }
+
+  .dimension-item .dim-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .dimension-item .dim-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+    line-height: 1.3;
+  }
+
+  /* Action list */
+  .action-list {
+    list-style: none;
+    padding: 0;
+  }
+
+  .action-list li {
+    padding: 10px 12px;
+    margin-bottom: 6px;
+    background: #FEF2F2;
+    border-left: 3px solid #EF4444;
+    border-radius: 0 4px 4px 0;
+    font-size: 14px;
+    color: #991B1B;
+  }
+
+  .action-list li.risk-none-action {
+    background: #F0FDF4;
+    border-left-color: var(--risk-none);
+    color: #15803D;
+  }
+
+  .warning-list {
+    list-style: none;
+    padding: 0;
+  }
+
+  .warning-list li {
+    padding: 8px 12px;
+    margin-bottom: 4px;
+    background: #FFFBEB;
+    border-left: 3px solid var(--risk-low);
+    border-radius: 0 4px 4px 0;
+    font-size: 13px;
+    color: #92400E;
+  }
+
+  .warning-list li.empty {
+    background: #F8FAFC;
+    border-left-color: var(--border);
+    color: var(--text-secondary);
+  }
+
+  .follow-up-text {
+    font-size: 14px;
+    padding: 12px;
+    background: #EFF6FF;
+    border-radius: 6px;
+    color: #1E40AF;
+    border-left: 3px solid var(--primary);
+  }
+
+  .behavior-none {
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-style: italic;
+  }
+
+  .behavior-tag {
+    display: inline-block;
+    padding: 4px 10px;
+    background: #FEF2F2;
+    color: #DC2626;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    margin-right: 6px;
+    margin-bottom: 4px;
+  }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s;
+  }
+
+  .modal-overlay.active {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .modal {
+    background: var(--white);
+    border-radius: 12px;
+    box-shadow: var(--shadow-lg);
+    width: 420px;
+    max-width: 90vw;
+    padding: 32px;
+    transform: translateY(20px);
+    transition: transform 0.2s;
+  }
+
+  .modal-overlay.active .modal {
+    transform: translateY(0);
+  }
+
+  .modal-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .modal-desc {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+  }
+
+  .modal-input-group {
+    margin-bottom: 20px;
+  }
+
+  .modal-input-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+  }
+
+  .modal-input-group input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+  }
+
+  .modal-input-group input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+  }
+
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 24px;
+  }
+
+  .qr-section {
+    text-align: center;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+  }
+
+  .qr-section img {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px;
+    background: white;
+  }
+
+  .qr-hint {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-top: 12px;
+    line-height: 1.6;
+  }
+
+  .session-id-display {
+    font-family: "SF Mono", "Fira Code", monospace;
+    font-size: 13px;
+    background: var(--bg);
+    padding: 6px 12px;
+    border-radius: 4px;
+    color: var(--primary);
+    display: inline-block;
+    margin: 8px 0;
+  }
+
+  /* Loading */
+  .loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    color: var(--text-secondary);
+    font-size: 14px;
+  }
+
+  .spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    margin-right: 8px;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* Score display */
+  .score-display {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .score-number {
+    font-size: 36px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .score-label {
+    font-size: 14px;
+    color: var(--text-secondary);
+  }
+
+  .score-name {
+    font-size: 14px;
+    color: var(--text);
+    margin-top: 4px;
+    font-weight: 500;
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 900px) {
+    .report-grid { grid-template-columns: 1fr; }
+    .dimension-grid { grid-template-columns: repeat(3, 1fr); }
+    .container { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-brand">
+    <div class="header-brand-icon">C</div>
+    <span>C-SSRS 电子评估系统</span>
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-secondary" onclick="exportScores()" title="导出评分数据（CSV）" style="margin-right:8px; background:white; color:#374151; border:1px solid #d1d5db;">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+      导出评分
+    </button>
+    <button class="btn btn-primary" onclick="showNewSessionModal()">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+      新建评估
+    </button>
+  </div>
+</div>
+
+<!-- List View -->
+<div id="list-view" class="container">
+  <div class="toolbar">
+    <div class="search-box">
+      <input type="text" id="search-input" placeholder="搜索患者ID..." oninput="filterTable()">
+    </div>
+    <div class="stat-summary" id="stat-summary"></div>
+  </div>
+  <div class="card">
+    <table>
+      <thead>
+        <tr>
+          <th>患者ID</th>
+          <th>评估日期</th>
+          <th>风险等级</th>
+          <th>严重度</th>
+          <th>意念强度</th>
+        </tr>
+      </thead>
+      <tbody id="assessment-table">
+      </tbody>
+    </table>
+    <div id="table-empty" class="empty-state" style="display:none;">
+      <div class="empty-state-icon">&#128203;</div>
+      <p>暂无评估记录</p>
+      <p style="margin-top:8px; font-size:13px;">点击右上方"新建评估"开始</p>
+    </div>
+  </div>
+</div>
+
+<!-- Report View -->
+<div id="report-view" class="container" style="display:none;">
+  <div class="report-header">
+    <div>
+      <div class="report-title">评估报告</div>
+      <div class="report-subtitle" id="report-subtitle"></div>
+    </div>
+    <button class="btn btn-secondary" onclick="showListView()">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      返回列表
+    </button>
+  </div>
+  <div id="report-content">
+    <div class="loading"><div class="spinner"></div>加载中...</div>
+  </div>
+</div>
+
+<!-- New Session Modal -->
+<div class="modal-overlay" id="new-session-modal">
+  <div class="modal">
+    <div id="modal-step-input">
+      <div class="modal-title">新建评估</div>
+      <div class="modal-desc">输入患者ID以创建新的评估会话</div>
+      <div class="modal-input-group">
+        <label for="patient-id-input">患者ID</label>
+        <input type="text" id="patient-id-input" placeholder="输入患者ID或留空自动生成" autofocus>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal()">取消</button>
+        <button class="btn btn-primary" onclick="createSession()">创建评估</button>
+      </div>
+    </div>
+    <div id="modal-step-qr" style="display:none;">
+      <div class="modal-title">评估已创建</div>
+      <div class="modal-desc">请让患者使用以下访问码开始评估</div>
+
+      <!-- Access code - prominent -->
+      <div style="text-align:center; margin:16px 0;">
+        <div style="font-size:13px; color:var(--text-secondary); margin-bottom:8px;">访问码（6位）</div>
+        <div id="access-code-display" style="font-size:42px; font-weight:800; letter-spacing:8px; color:var(--primary); font-family: 'SF Mono', 'Menlo', monospace; background:#eff6ff; padding:12px 24px; border-radius:12px; display:inline-block; border:2px dashed #3b82f6;"></div>
+        <div style="font-size:12px; color:#6b7280; margin-top:8px;">
+          患者打开手机浏览器 → 访问 <span id="code-url-display" style="color:var(--primary);"></span><br>
+          输入上方6位访问码即可开始评估
+        </div>
+      </div>
+
+      <!-- QR code (alternative) -->
+      <div style="text-align:center; border-top:1px solid #e5e7eb; padding-top:16px; margin-top:16px;">
+        <div style="font-size:12px; color:#9ca3af; margin-bottom:12px;">或使用二维码（如无法输入访问码）</div>
+        <div class="qr-section" style="margin:0; padding:0; border:none;">
+          <img id="qr-image" src="" alt="QR Code" width="160" height="160">
+          <div class="qr-hint" style="font-size:11px;">
+            微信如无法打开，请用 Safari 扫描
+          </div>
+        </div>
+      </div>
+
+      <div class="session-id-display" id="qr-session-id" style="display:none;"></div>
+      <div id="qr-patient-display" style="display:none;"></div>
+
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal()">关闭</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Config ──
+const API_BASE = window.location.origin;
+
+// ── Data ──
+let allAssessments = [];
+
+// ── Routing ──
+function init() {
+  window.addEventListener('hashchange', handleRoute);
+  handleRoute();
+}
+
+function handleRoute() {
+  const hash = window.location.hash;
+  const reportMatch = hash.match(/^#\/report\/(.+)$/);
+  if (reportMatch) {
+    showReportView(reportMatch[1]);
+  } else {
+    showListView();
+  }
+}
+
+function showListView() {
+  document.getElementById('list-view').style.display = '';
+  document.getElementById('report-view').style.display = 'none';
+  window.location.hash = '';
+  loadAssessments();
+}
+
+function showReportView(sessionId) {
+  document.getElementById('list-view').style.display = 'none';
+  document.getElementById('report-view').style.display = '';
+  window.location.hash = `/report/${sessionId}`;
+  loadReport(sessionId);
+}
+
+// ── API calls ──
+async function loadAssessments() {
+  try {
+    const res = await fetch(`${API_BASE}/api/report`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    allAssessments = await res.json();
+    renderTable(allAssessments);
+    renderStats(allAssessments);
+  } catch (err) {
+    console.error('Failed to load assessments:', err);
+    allAssessments = [];
+    renderTable([]);
+    renderStats([]);
+  }
+}
+
+async function loadReport(sessionId) {
+  const container = document.getElementById('report-content');
+  container.innerHTML = '<div class="loading"><div class="spinner"></div>加载中...</div>';
+
+  try {
+    const res = await fetch(`${API_BASE}/api/report/${sessionId}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    renderReport(data);
+  } catch (err) {
+    console.error('Failed to load report:', err);
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">&#9888;</div>
+        <p>无法加载评估报告</p>
+        <p style="margin-top:8px; font-size:13px;">${err.message}</p>
+        <button class="btn btn-secondary" style="margin-top:16px;" onclick="showListView()">返回列表</button>
+      </div>`;
+  }
+}
+
+async function createSession() {
+  const patientId = document.getElementById('patient-id-input').value.trim();
+  if (!patientId) {
+    // Generate a patient ID: P + timestamp
+    const generated = 'P' + Date.now().toString().slice(-8);
+    document.getElementById('patient-id-input').value = generated;
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/api/sessions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ patient_id: patientId }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+
+    const sessionId = data.session_id;
+    const accessCode = data.access_code || '';
+    // Use server-side QR endpoint which auto-embeds LAN IP
+    const qrUrl = `/api/qr/${sessionId}`;
+    const baseUrl = `${window.location.protocol}//${window.location.hostname}:8000/code`;
+
+    document.getElementById('modal-step-input').style.display = 'none';
+    document.getElementById('modal-step-qr').style.display = '';
+    document.getElementById('access-code-display').textContent = accessCode;
+    document.getElementById('code-url-display').textContent = baseUrl;
+    document.getElementById('qr-image').src = qrUrl;
+
+    // Reload list in background
+    loadAssessments();
+  } catch (err) {
+    console.error('Failed to create session:', err);
+    alert('创建评估失败: ' + err.message);
+  }
+}
+
+// ── Export Scores ──
+async function exportScores() {
+  try {
+    const res = await fetch(`${API_BASE}/api/export/scores`);
+    if (!res.ok) throw new Error('导出失败');
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `cssrs_scores_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    alert('导出失败: ' + err.message);
+  }
+}
+
+// ── Rendering ──
+function renderTable(assessments) {
+  const tbody = document.getElementById('assessment-table');
+  const emptyEl = document.getElementById('table-empty');
+
+  if (!assessments.length) {
+    tbody.innerHTML = '';
+    emptyEl.style.display = '';
+    return;
+  }
+
+  emptyEl.style.display = 'none';
+  tbody.innerHTML = assessments.map(a => {
+    const riskClass = getRiskClass(a.risk_level);
+    const riskLabel = getRiskLabel(a.risk_level);
+    const severityName = a.severity_name || a.severity_label || getSeverityName(a.severity_score);
+    const intensityDisplay = a.intensity_total != null && a.intensity_total > 0
+      ? `${a.intensity_total} (${a.intensity_level || ''})`
+      : '不适用';
+
+    return `
+      <tr onclick="showReportView('${a.session_id}')">
+        <td><strong>${escapeHtml(a.patient_id)}</strong></td>
+        <td>${formatDate(a.assessment_date)}</td>
+        <td>
+          <span class="risk-badge ${riskClass}">
+            <span class="dot"></span>
+            ${riskLabel}
+          </span>
+        </td>
+        <td>${escapeHtml(severityName)}</td>
+        <td>${intensityDisplay}</td>
+      </tr>`;
+  }).join('');
+}
+
+function renderStats(assessments) {
+  const el = document.getElementById('stat-summary');
+  if (!assessments.length) {
+    el.innerHTML = '';
+    return;
+  }
+  const highRisk = assessments.filter(a =>
+    ['high', 'critical'].includes(a.risk_level)
+  ).length;
+  el.innerHTML = `
+    <span>共 <strong>${assessments.length}</strong> 条评估</span>
+    <span>高风险 <strong style="color:var(--risk-high)">${highRisk}</strong> 条</span>`;
+}
+
+function renderReport(data) {
+  const subtitle = document.getElementById('report-subtitle');
+  subtitle.textContent = `患者 ${data.patient_id} · ${formatDate(data.assessment_date)} · 会话 ${data.session_id}`;
+
+  const riskClass = getRiskClass(data.risk_level);
+  const riskLabel = getRiskLabel(data.risk_level);
+
+  const severityScore = data.severity_score ?? data.severity_label_score;
+  const severityName = data.severity_name || getSeverityName(severityScore);
+  const intensityTotal = data.intensity_total ?? 0;
+  const intensityLevel = data.intensity_level || '不适用';
+  const behaviorPositive = data.behavior_positive || data.behavior_types_positive || [];
+  const lethalityLevel = data.lethality_level ?? 0;
+  const immediateActions = data.immediate_actions || [];
+  const followUp = data.follow_up || data.follow_up_plan || '';
+  const warningSignals = data.warning_signals || [];
+
+  // Intensity dimensions (may not be stored individually, show totals)
+  const intensityDims = [
+    { label: '频率', value: data.intensity_frequency ?? '-' },
+    { label: '持续时间', value: data.intensity_duration ?? '-' },
+    { label: '可控性', value: data.intensity_controllability ?? '-' },
+    { label: '阻遏因素', value: data.intensity_deterrents ?? '-' },
+    { label: '行动倾向', value: data.intensity_reason ?? '-' },
+  ];
+
+  const container = document.getElementById('report-content');
+  container.innerHTML = `
+    <!-- Scoring Summary Card (research-oriented) -->
+    <div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); color:white; border-radius:16px; padding:20px; margin-bottom:20px;">
+      <div style="font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:1px; opacity:0.8; margin-bottom:12px;">C-SSRS 评分摘要（科研数据）</div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(120px, 1fr)); gap:16px;">
+        <div style="text-align:center;">
+          <div style="font-size:32px; font-weight:800;">${severityScore ?? '-'}</div>
+          <div style="font-size:11px; opacity:0.9;">意念严重度 (0-5)</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:32px; font-weight:800;">${intensityTotal || '-'}</div>
+          <div style="font-size:11px; opacity:0.9;">意念强度 (0-25)</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:32px; font-weight:800;">${lethalityLevel || '-'}</div>
+          <div style="font-size:11px; opacity:0.9;">致死性 (0-6)</div>
+        </div>
+        <div style="text-align:center;">
+          <div class="risk-badge ${riskClass}" style="font-size:14px; padding:6px 14px; margin:4px auto 0;">
+            <span class="dot" style="width:8px;height:8px;background:var(--risk-dot);"></span>
+            ${riskLabel}
+          </div>
+          <div style="font-size:11px; opacity:0.9; margin-top:4px;">综合风险</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="report-grid">
+      <!-- Basic info -->
+      <div class="report-section">
+        <div class="section-header">基本信息</div>
+        <div class="section-body">
+          <div class="info-row">
+            <div class="info-label">患者ID</div>
+            <div class="info-value"><strong>${escapeHtml(data.patient_id)}</strong></div>
+          </div>
+          <div class="info-row">
+            <div class="info-label">评估日期</div>
+            <div class="info-value">${formatDate(data.assessment_date)}</div>
+          </div>
+          <div class="info-row">
+            <div class="info-label">会话ID</div>
+            <div class="info-value" style="font-family:monospace; font-size:13px; color:var(--text-secondary);">${escapeHtml(data.session_id)}</div>
+          </div>
+          <div class="info-row">
+            <div class="info-label">筛查结果</div>
+            <div class="info-value">${data.screener_result === 'positive' ? '<span style="color:#DC2626;font-weight:600;">阳性</span>' : '<span style="color:#15803D;font-weight:600;">阴性</span>'}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Risk level -->
+      <div class="report-section">
+        <div class="section-header">风险等级</div>
+        <div class="section-body">
+          <div class="risk-display">
+            <span class="risk-badge ${riskClass}" style="font-size:18px; padding:8px 20px;">
+              <span class="dot" style="width:10px;height:10px;"></span>
+              ${riskLabel}
+            </span>
+          </div>
+          <div class="risk-description">
+            基于自杀意念严重度、行为评估及致死性综合判定
+          </div>
+        </div>
+      </div>
+
+      <!-- Ideation severity -->
+      <div class="report-section">
+        <div class="section-header">自杀意念评估</div>
+        <div class="section-body">
+          <div class="score-display">
+            <span class="score-number">${severityScore}</span>
+            <span class="score-label">/ 5</span>
+          </div>
+          <div class="score-name">${escapeHtml(severityName)}</div>
+
+          <div style="margin-top:20px; padding-top:16px; border-top:1px solid var(--border);">
+            <div style="font-size:13px; font-weight:600; color:var(--text-secondary); margin-bottom:4px;">意念强度</div>
+            <div class="score-display">
+              <span class="score-number">${intensityTotal}</span>
+              <span class="score-label">分</span>
+            </div>
+            <div class="score-name">${escapeHtml(intensityLevel)}</div>
+
+            <div class="dimension-grid">
+              ${intensityDims.map(d => `
+                <div class="dimension-item">
+                  <div class="dim-value">${d.value}</div>
+                  <div class="dim-label">${d.label}</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Behavior assessment -->
+      <div class="report-section">
+        <div class="section-header">自杀行为评估</div>
+        <div class="section-body">
+          ${behaviorPositive.length > 0
+            ? behaviorPositive.map(b => `<span class="behavior-tag">${escapeHtml(b)}</span>`).join('')
+            : '<div class="behavior-none">无阳性自杀行为</div>'
+          }
+
+          ${lethalityLevel > 0 ? `
+            <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
+              <div style="font-size:13px; font-weight:600; color:var(--text-secondary); margin-bottom:4px;">致死性评估</div>
+              <div class="score-display">
+                <span class="score-number">${lethalityLevel}</span>
+                <span class="score-label">/ 6</span>
+              </div>
+            </div>
+          ` : `
+            <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
+              <div style="font-size:13px; font-weight:600; color:var(--text-secondary); margin-bottom:4px;">致死性评估</div>
+              <div style="color:var(--text-secondary); font-size:14px;">不适用</div>
+            </div>
+          `}
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="report-section full-width">
+        <div class="section-header">处理建议</div>
+        <div class="section-body">
+          <ul class="action-list ${data.risk_level === 'none' ? 'risk-none-action' : ''}">
+            ${immediateActions.map(a => `<li>${escapeHtml(a)}</li>`).join('')}
+          </ul>
+        </div>
+      </div>
+
+      <!-- Follow up -->
+      <div class="report-section">
+        <div class="section-header">随访计划</div>
+        <div class="section-body">
+          <div class="follow-up-text">${escapeHtml(followUp)}</div>
+        </div>
+      </div>
+
+      <!-- Warning signals -->
+      <div class="report-section">
+        <div class="section-header">预警信号</div>
+        <div class="section-body">
+          ${warningSignals.length > 0
+            ? `<ul class="warning-list">${warningSignals.map(w => `<li>${escapeHtml(w)}</li>`).join('')}</ul>`
+            : '<ul class="warning-list"><li class="empty">无预警信号</li></ul>'
+          }
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ── Helpers ──
+function getRiskClass(level) {
+  const map = { none: 'risk-none', low: 'risk-low', medium: 'risk-medium', high: 'risk-high', critical: 'risk-critical' };
+  return map[level] || 'risk-none';
+}
+
+function getRiskLabel(level) {
+  const map = { none: '无风险', low: '低风险', medium: '中等风险', high: '高风险', critical: '极高风险' };
+  return map[level] || '未知';
+}
+
+function getSeverityName(score) {
+  const map = {
+    0: '无自杀意念',
+    1: '渴望死亡',
+    2: '非特定的主动自杀意念',
+    3: '有方法的主动自杀意念',
+    4: '有意图但无计划的主动自杀意念',
+    5: '有计划有意图的主动自杀意念',
+  };
+  return map[score] || '未知';
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '-';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  const div = document.createElement('div');
+  div.textContent = String(str);
+  return div.innerHTML;
+}
+
+function filterTable() {
+  const query = document.getElementById('search-input').value.trim().toLowerCase();
+  if (!query) {
+    renderTable(allAssessments);
+    renderStats(allAssessments);
+    return;
+  }
+  const filtered = allAssessments.filter(a =>
+    (a.patient_id || '').toLowerCase().includes(query)
+  );
+  renderTable(filtered);
+  renderStats(filtered);
+}
+
+// ── Modal ──
+function showNewSessionModal() {
+  document.getElementById('new-session-modal').classList.add('active');
+  document.getElementById('modal-step-input').style.display = '';
+  document.getElementById('modal-step-qr').style.display = 'none';
+  document.getElementById('patient-id-input').value = '';
+  setTimeout(() => document.getElementById('patient-id-input').focus(), 100);
+}
+
+function closeModal() {
+  document.getElementById('new-session-modal').classList.remove('active');
+}
+
+// Close modal on overlay click
+document.getElementById('new-session-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// Enter key in patient ID input
+document.getElementById('patient-id-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') createSession();
+});
+
+// Escape key closes modal
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeModal();
+});
+
+// ── Init ──
+init();
+
+// ── PWA Install Hint ──
+(function() {
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+    || navigator.standalone;
+  if (isStandalone) return;
+
+  const hint = document.createElement('div');
+  hint.className = 'install-hint';
+  hint.innerHTML = '<span>添加到主屏幕，下次点击图标直接进入</span>' +
+    '<button class="close-btn">&times;</button>';
+  document.body.appendChild(hint);
+
+  // Show after 3 seconds
+  setTimeout(() => hint.classList.add('show'), 3000);
+
+  hint.querySelector('.close-btn').addEventListener('click', () => {
+    hint.classList.remove('show');
+    localStorage.setItem('cssrs-dismiss-install', '1');
+  });
+
+  if (localStorage.getItem('cssrs-dismiss-install')) {
+    hint.remove();
+  }
+})();
+</script>
+</body>
+</html>

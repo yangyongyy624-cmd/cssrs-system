@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>C-SSRS 评估</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f5f7fa;
+    color: #1a1a2e;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .container {
+    background: white;
+    border-radius: 16px;
+    padding: 32px 24px;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    text-align: center;
+  }
+  .logo {
+    font-size: 48px;
+    margin-bottom: 8px;
+  }
+  h1 {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .subtitle {
+    font-size: 13px;
+    color: #6b7280;
+    margin-bottom: 28px;
+  }
+  .code-input-group {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 24px;
+  }
+  .code-input {
+    width: 44px;
+    height: 56px;
+    text-align: center;
+    font-size: 24px;
+    font-weight: 700;
+    border: 2px solid #e5e7eb;
+    border-radius: 10px;
+    background: #f9fafb;
+    text-transform: uppercase;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .code-input:focus {
+    border-color: #3b82f6;
+    background: white;
+  }
+  .submit-btn {
+    width: 100%;
+    padding: 14px;
+    background: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .submit-btn:active { background: #2563eb; }
+  .submit-btn:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+  }
+  .error-msg {
+    color: #ef4444;
+    font-size: 14px;
+    margin-top: 12px;
+    display: none;
+  }
+  .loading-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(255,255,255,0.9);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+  }
+  .loading-overlay.show { display: flex; }
+  .spinner {
+    width: 40px; height: 40px;
+    border: 4px solid #e5e7eb;
+    border-top-color: #3b82f6;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-bottom: 12px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .footer {
+    margin-top: 24px;
+    font-size: 11px;
+    color: #9ca3af;
+  }
+  .privacy {
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 20px;
+    padding: 10px;
+    background: #f0fdf4;
+    border-radius: 8px;
+    border: 1px solid #bbf7d0;
+  }
+  .privacy::before { content: "🔒 "; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="logo">📋</div>
+  <h1>C-SSRS 自杀风险评估量表</h1>
+  <p class="subtitle">哥伦比亚自杀严重程度评定量表</p>
+
+  <div class="privacy">
+    您的回答将严格保密，仅用于医疗评估
+  </div>
+
+  <p style="font-size:14px; color:#6b7280; margin-bottom:16px;">
+    请输入医生提供的 <strong>6位访问码</strong>
+  </p>
+
+  <div class="code-input-group" id="code-inputs">
+    <input class="code-input" maxlength="1" data-idx="0" autocomplete="off" inputmode="text">
+    <input class="code-input" maxlength="1" data-idx="1" autocomplete="off" inputmode="text">
+    <input class="code-input" maxlength="1" data-idx="2" autocomplete="off" inputmode="text">
+    <input class="code-input" maxlength="1" data-idx="3" autocomplete="off" inputmode="text">
+    <input class="code-input" maxlength="1" data-idx="4" autocomplete="off" inputmode="text">
+    <input class="code-input" maxlength="1" data-idx="5" autocomplete="off" inputmode="text">
+  </div>
+
+  <button class="submit-btn" id="submit-btn" disabled>开始评估</button>
+  <p class="error-msg" id="error-msg"></p>
+
+  <div class="footer">
+    Columbia Suicide Severity Rating Scale (C-SSRS)<br>
+    © Columbia Lighthouse Project
+  </div>
+</div>
+
+<div class="loading-overlay" id="loading">
+  <div class="spinner"></div>
+  <p style="font-size:14px; color:#6b7280;">正在加载评估问卷...</p>
+</div>
+
+<script>
+(function() {
+  const inputs = document.querySelectorAll('.code-input');
+  const submitBtn = document.getElementById('submit-btn');
+  const errorMsg = document.getElementById('error-msg');
+  const loading = document.getElementById('loading');
+
+  // Auto-advance and collect code
+  inputs.forEach((input, idx) => {
+    input.addEventListener('input', (e) => {
+      const val = e.target.value.toUpperCase();
+      e.target.value = val;
+      if (val && idx < inputs.length - 1) {
+        inputs[idx + 1].focus();
+      }
+      checkComplete();
+    });
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Backspace' && !e.target.value && idx > 0) {
+        inputs[idx - 1].focus();
+      }
+    });
+
+    // Paste support
+    input.addEventListener('paste', (e) => {
+      e.preventDefault();
+      const text = (e.clipboardData || window.clipboardData).getData('text').toUpperCase().replace(/[^A-Z0-9]/g, '');
+      if (text.length >= 6) {
+        inputs.forEach((inp, i) => {
+          if (i < text.length) {
+            inp.value = text[i];
+          }
+        });
+        inputs[5].focus();
+        checkComplete();
+      }
+    });
+  });
+
+  function checkComplete() {
+    const code = Array.from(inputs).map(i => i.value).join('');
+    submitBtn.disabled = code.length !== 6;
+  }
+
+  submitBtn.addEventListener('click', async () => {
+    const code = Array.from(inputs).map(i => i.value).join('');
+    errorMsg.style.display = 'none';
+    loading.classList.add('show');
+
+    try {
+      const res = await fetch(`/api/code/${code}`);
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || '访问码无效');
+      }
+      const data = await res.json();
+      // Redirect to patient questionnaire
+      window.location.href = `/patient.html?session=${data.session_id}`;
+    } catch (err) {
+      loading.classList.remove('show');
+      errorMsg.textContent = err.message || '网络错误，请重试';
+      errorMsg.style.display = 'block';
+    }
+  });
+
+  // Pre-fill from URL parameter (?code=XXXXXX)
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlCode = (urlParams.get('code') || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (urlCode.length >= 6) {
+    inputs.forEach((inp, i) => { if (i < 6) inp.value = urlCode[i]; });
+    inputs[5].focus();
+    checkComplete();
+  }
+
+  // Focus first input on load
+  if (!urlCode || urlCode.length < 6) inputs[0].focus();
+})();
+</script>
+</body>
+</html>
