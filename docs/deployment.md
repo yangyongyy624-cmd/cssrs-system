@@ -156,7 +156,6 @@ ssh -fN \
 ```bash
 # 在云端服务器上执行
 curl -s http://127.0.0.1:8889/ -o /dev/null -w "%{http_code}"
-# 应返回 200
 ```
 
 ### 3.5 开机自启 (macOS launchd)
@@ -189,10 +188,7 @@ curl -s http://127.0.0.1:8889/ -o /dev/null -w "%{http_code}"
     <key>RunAtLoad</key>
     <true/>
     <key>KeepAlive</key>
-    <dict>
-        <key>SuccessfulExit</key>
-        <false/>
-    </dict>
+    <dict><key>SuccessfulExit</key><false/></dict>
     <key>ThrottleInterval</key>
     <integer>30</integer>
     <key>StandardOutPath</key>
@@ -209,7 +205,48 @@ launchctl load ~/Library/LaunchAgents/com.cssrs.tunnel.plist
 
 ---
 
-## 第四部分：端到端验证
+## 第四部分：数据查看
+
+### 4.1 医生端网页 (浏览器)
+
+医生通过浏览器访问云端网关，认证后可查看：
+
+1. **评估列表**：患者ID、日期、风险等级、意念严重度、意念强度
+2. **完整报告**（点击任意记录进入）：
+   - C-SSRS 评分摘要（意念严重度 0-5、意念强度 0-25、致死性 0-6、综合风险）
+   - **患者答卷原文**（意念出现时间、持续多久、自杀方法、地点、时机、意图强度、准备行为等）
+   - 自杀意念评估（5 维度分数）
+   - 自杀行为评估（阳性行为标记）
+   - 处理建议（即时干预列表）
+   - 随访计划
+   - 预警信号
+
+### 4.2 OpenClaw 语音助手
+
+OpenClaw 调用云端 API 查看数据：
+
+```
+# 脱敏摘要（仅风险等级，适合日常巡查）
+GET /api/summary?limit=5
+返回: 患者ID + 风险等级 + 日期
+
+# 完整答卷（含所有文字内容）
+GET /api/report/{session_id}
+返回: 完整评分 + 患者填写的所有文字内容
+
+# 患者历史
+GET /api/patient/{patient_id}/history
+返回: 该患者所有历史评估记录
+```
+
+**数据访问权限说明：**
+- `/api/summary` — 脱敏摘要，仅返回风险等级，适合语音播报
+- `/api/report/{id}` — 完整数据，含患者答卷原文，适合医生详细查看
+- 医生端网页 — 通过 PIN 认证后访问，可浏览列表和完整报告
+
+---
+
+## 第五部分：端到端验证
 
 ```bash
 # 1. 创建 session
@@ -217,7 +254,7 @@ curl -s -X POST http://YOUR_SERVER_IP:8888/api/sessions \
   -H "Content-Type: application/json" \
   -d '{"patient_id":"deploy-test-001","version":"baseline"}'
 
-# 2. 提交评估
+# 2. 提交评估 (注意端点是 /api/assess，不是 /api/submit)
 curl -s -X POST "http://YOUR_SERVER_IP:8888/api/assess/{session_id}" \
   -H "Content-Type: application/json" \
   -d '{
@@ -229,16 +266,19 @@ curl -s -X POST "http://YOUR_SERVER_IP:8888/api/assess/{session_id}" \
 
 # 3. 验证数据到达本地
 curl -s http://localhost:8000/api/summary?limit=1
+
+# 4. 查看完整报告（含患者答卷原文）
+curl -s http://YOUR_SERVER_IP:8888/api/report/{session_id}
 ```
 
 ---
 
-## 第五部分：常见问题
+## 第六部分：常见问题
 
 ### Q: 本地服务频繁崩溃
 
 **原因**: 端口被占用或 venv 路径不正确。
-**解决**: 使用 `scripts/start-local.sh --daemon` 启动，脚本会自动清理旧进程。
+**解决**: 使用 `scripts/start-local.sh --daemon` 启动，脚本会自动清理旧进程。launchd plist 使用 `SuccessfulExit: false` + `ThrottleInterval: 30` 防止重启风暴。
 
 ### Q: SSH 隧道建立失败
 
@@ -262,6 +302,12 @@ ssh ubuntu@YOUR_SERVER_IP "sudo kill <PID>"       # 杀掉
 **原因**: SSH 隧道断开，云端无法推送到本地。
 **解决**: 数据会暂存在云端 SQLite 中，隧道恢复后手动重推。
 
+### Q: 患者填写的文字内容在哪里看？
+
+- **OpenClaw**：调用 `GET /api/report/{session_id}`，返回全部答卷原文
+- **医生端网页**：点击评估列表中的某条记录，报告页"患者答卷原文"区块显示所有文字内容
+- 注意：`/api/summary` 仅返回风险等级，不包含答卷原文
+
 ### Q: launchd 服务 exit code -15
 
 **原因**: launchd 的 KeepAlive 在进程退出时立即重启，如果端口未释放会反复崩溃。
@@ -274,6 +320,7 @@ ssh ubuntu@YOUR_SERVER_IP "sudo kill <PID>"       # 杀掉
 | 文件 | 说明 | 是否公开 |
 |------|------|----------|
 | `backend/cssrs.db` | SQLite 数据库，含所有评估数据 | ❌ 加入 .gitignore |
+| `backend/cssrs_gateway.db` | 云端网关数据库 (session + PIN) | ❌ 不公开 |
 | `logs/` | 运行日志 | ❌ 加入 .gitignore |
 | `.env` | 环境变量 (如有) | ❌ 加入 .gitignore |
 | `.env.example` | 配置模板 | ✅ 公开 |

@@ -1013,6 +1013,14 @@ function renderReport(data) {
     </div>
 
     <div class="report-grid">
+      <!-- Patient answers (actual text content) -->
+      <div class="report-section full-width">
+        <div class="section-header">患者答卷原文</div>
+        <div class="section-body">
+          ${renderPatientAnswers(data)}
+        </div>
+      </div>
+
       <!-- Basic info -->
       <div class="report-section">
         <div class="section-header">基本信息</div>
@@ -1138,6 +1146,54 @@ function renderReport(data) {
       </div>
     </div>
   `;
+}
+
+// ── Patient text content renderer ──
+function renderPatientAnswers(d) {
+  const sections = [];
+
+  // Ideation text
+  const ideation = [];
+  if (d.i1_onset) ideation.push(['意念出现时间', d.i1_onset]);
+  if (d.i1_duration) ideation.push(['持续多久', d.i1_duration]);
+  if (d.i1_frequency != null) ideation.push(['出现频率', d.i1_frequency]);
+  if (d.i2_nature) ideation.push(['意念内容', d.i2_nature]);
+  if (d.i3_method) {
+    ideation.push(['自杀方法', d.i3_method]);
+    if (d.i3_location) ideation.push(['地点', d.i3_location]);
+    if (d.i3_timing) ideation.push(['时机', d.i3_timing]);
+  }
+  if (d.i4_intent_strength != null) ideation.push(['意图强度', `${d.i4_intent_strength}/10`]);
+  if (d.i2_frequency != null) ideation.push(['意念频率', d.i2_frequency]);
+  if (d.i2_duration != null) ideation.push(['意念持续', d.i2_duration]);
+
+  if (ideation.length > 0) {
+    sections.push(`<div style="margin-bottom:16px;"><div style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;">意念相关</div>${ideation.map(([l, v]) => `<div style="display:flex;gap:12px;padding:6px 0;font-size:14px;"><span style="color:var(--text-secondary);min-width:80px;flex-shrink:0;">${escapeHtml(l)}</span><span>${escapeHtml(v)}</span></div>`).join('')}</div>`);
+  }
+
+  // Behavior text
+  const behavior = [];
+  if (d.b4_behavior) {
+    behavior.push(['准备行为', d.b4_behavior]);
+    if (d.b4_date) behavior.push(['日期', d.b4_date]);
+  }
+  if (d.b1_method) {
+    behavior.push(['企图方法', d.b1_method]);
+    if (d.b1_date) behavior.push(['日期', d.b1_date]);
+  }
+  if (d.b2_method) behavior.push(['中断行为', d.b2_method]);
+  if (d.b3_method) behavior.push(['中止行为', d.b3_method]);
+  if (d.b5_behavior_type) behavior.push(['非自杀性自伤', d.b5_behavior_type]);
+  if (d.b5_motivation) behavior.push(['自伤动机', d.b5_motivation]);
+
+  if (behavior.length > 0) {
+    sections.push(`<div style="margin-bottom:16px;"><div style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;">行为相关</div>${behavior.map(([l, v]) => `<div style="display:flex;gap:12px;padding:6px 0;font-size:14px;"><span style="color:var(--text-secondary);min-width:80px;flex-shrink:0;">${escapeHtml(l)}</span><span>${escapeHtml(v)}</span></div>`).join('')}</div>`);
+  }
+
+  if (sections.length === 0) {
+    return '<div style="color:var(--text-secondary);font-size:14px;">患者未填写文字内容</div>';
+  }
+  return sections.join('');
 }
 
 // ── Helpers ──

@@ -72,7 +72,7 @@ pip install -r backend/requirements.txt
 
 ```bash
 # 启动服务
-bash manage.sh start
+bash scripts/start-local.sh
 
 # 查看状态
 bash manage.sh status
@@ -80,6 +80,8 @@ bash manage.sh status
 # 停止服务
 bash manage.sh stop
 ```
+
+> `scripts/start-local.sh` 会自动清理端口占用，确保服务稳定启动。
 
 服务启动后访问：
 - 医生端：http://localhost:8000/
@@ -123,13 +125,13 @@ bash manage.sh stop
 1. 管理员生成医生访问码（4 位 PIN）
 2. 医生手机浏览器扫码认证
 3. 新建评估，生成患者二维码
-4. 查看评分结果和患者历史
+4. 查看评分结果、**患者答卷原文**和患者历史
 
 ### 患者端
 
 1. 微信扫码或浏览器扫码
 2. 输入 6 位访问码
-3. 逐题作答（约 2-3 分钟）
+3. 逐题作答（约 2-3 分钟），支持填写文字内容（自杀方法、地点、时机等）
 4. 提交完成
 
 ### 管理员
@@ -137,7 +139,8 @@ bash manage.sh stop
 通过语音助手管理：
 - 生成评估码
 - 管理医生权限
-- 查看评估摘要
+- 查看评估摘要（脱敏）
+- 查看完整答卷原文（含患者文字内容）
 
 ## 数据安全
 
