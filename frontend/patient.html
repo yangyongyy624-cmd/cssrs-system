@@ -263,6 +263,62 @@
     padding: 16px; background: var(--gray-100); border-radius: var(--radius);
   }
 
+  /* Phone input page */
+  .phone-page {
+    text-align: center;
+    padding: 40px 0 20px;
+  }
+  .phone-page .phone-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+  }
+  .phone-page .phone-title {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .phone-page .phone-desc {
+    font-size: 14px;
+    color: var(--gray-500);
+    margin-bottom: 32px;
+    line-height: 1.6;
+  }
+  .phone-input-wrap {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    align-items: center;
+  }
+  .phone-input-wrap input {
+    width: 200px;
+    padding: 14px 16px;
+    border: 2px solid var(--gray-200);
+    border-radius: var(--radius);
+    font-size: 18px;
+    font-family: inherit;
+    text-align: center;
+    letter-spacing: 2px;
+    transition: border-color 0.15s;
+  }
+  .phone-input-wrap input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+  }
+  .phone-input-wrap input:disabled {
+    background: var(--gray-100);
+    color: var(--gray-500);
+  }
+  .phone-input-wrap .nav-btn {
+    flex: 0 0 auto;
+    padding: 14px 28px;
+  }
+  .phone-hint {
+    font-size: 12px;
+    color: var(--gray-400);
+    margin-top: 12px;
+  }
+
   /* Loading overlay */
   .loading-overlay {
     display: none; position: fixed; inset: 0;
@@ -304,6 +360,20 @@
         请通过医生提供的链接进入评估系统，<br>
         或联系医护人员获取帮助。
       </div>
+    </div>
+  </div>
+
+  <!-- ===== STEP 0: Phone Confirmation ===== -->
+  <div class="question-page" id="pagePhone">
+    <div class="phone-page">
+      <div class="phone-icon">&#128241;</div>
+      <div class="phone-title">确认您的手机号</div>
+      <div class="phone-desc">请输入或确认您的手机号，用于医疗档案关联</div>
+      <div class="phone-input-wrap">
+        <input type="tel" id="confirm-phone-input" placeholder="11位手机号" inputmode="numeric" pattern="[0-9]*" maxlength="11">
+        <button class="nav-btn nav-btn-next" id="phoneNext">下一步</button>
+      </div>
+      <div class="phone-hint" id="phone-hint"></div>
     </div>
   </div>
 
@@ -687,7 +757,7 @@
   // Parse session_id and phone
   const params = new URLSearchParams(window.location.search);
   const sessionId = params.get('session') || params.get('session_id');
-  const patientPhone = params.get('phone') || '';
+  const urlPhone = params.get('phone') || '';
 
   // State
   const state = {
@@ -700,11 +770,12 @@
     followup: {},
     intensity: { frequency: null, duration: null, controllability: null, deterrents: null, reason: null },
     currentSection: 0,
-    q1Answered: false
+    q1Answered: false,
+    confirmedPhone: ''
   };
 
-  const sections = ['pageScreener', 'pageIntensity', 'pageBehavior', 'pageSubmit'];
-  const sectionLabels = ['步骤 1/4', '步骤 2/4', '步骤 3/4', '步骤 4/4'];
+  const sections = ['pagePhone', 'pageScreener', 'pageIntensity', 'pageBehavior', 'pageSubmit'];
+  const sectionLabels = ['步骤 0/4', '步骤 1/4', '步骤 2/4', '步骤 3/4', '步骤 4/4'];
 
   // Show page
   function showPage(id) {
@@ -717,7 +788,10 @@
   function updateProgress() {
     const total = sections.length;
     const current = state.currentSection + 1;
-    const pct = Math.round(((state.currentSection) / (total - 1)) * 100);
+    // Phone step doesn't count toward percentage, start at 0
+    const idx = state.currentSection === 0 ? 0 : state.currentSection - 1;
+    const maxIdx = total - 2; // exclude phone step
+    const pct = maxIdx > 0 ? Math.round((idx / maxIdx) * 100) : 0;
     document.getElementById('progressLabel').textContent = sectionLabels[state.currentSection];
     document.getElementById('progressPct').textContent = pct + '%';
     document.getElementById('progressFill').style.width = pct + '%';
@@ -735,6 +809,21 @@
   function getVisibleSections() {
     if (state.answers.i1 === true) return sections;
     return sections.filter(s => s !== 'pageIntensity');
+  }
+
+  // Phone page setup
+  function setupPhonePage() {
+    const input = document.getElementById('confirm-phone-input');
+    const hint = document.getElementById('phone-hint');
+    if (urlPhone && urlPhone.length >= 7) {
+      input.value = urlPhone;
+      hint.textContent = '医生已预填，如需修改请直接输入新号码';
+      input.focus();
+      input.select();
+    } else {
+      hint.textContent = '医生未预填，请自行输入11位手机号';
+      input.focus();
+    }
   }
 
   // Yes/No button handler
@@ -906,7 +995,7 @@
     const f = state.followup;
     return {
       session_id: sessionId,
-      patient_phone: patientPhone || null,
+      patient_phone: state.confirmedPhone || null,
       ideation: {
         i1_wish_dead: a.i1 === true,
         i1_onset: f.i1_onset,
@@ -1053,9 +1142,27 @@
     document.getElementById('screenerNext').addEventListener('click', function() {
       collectFollowups();
       if (state.answers.i1 === true) {
-        showSection(1); // intensity
+        showSection(2); // intensity
       } else {
-        showSection(2); // behavior (skip intensity)
+        showSection(3); // behavior (skip intensity)
+      }
+    });
+
+    // Nav: Phone -> next
+    document.getElementById('phoneNext').addEventListener('click', function() {
+      const phone = document.getElementById('confirm-phone-input').value.trim();
+      if (phone.length < 7) {
+        alert('请输入正确的11位手机号');
+        return;
+      }
+      state.confirmedPhone = phone;
+      showSection(1); // screener
+    });
+
+    // Enter key on phone input
+    document.getElementById('confirm-phone-input').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        document.getElementById('phoneNext').click();
       }
     });
 
@@ -1083,8 +1190,9 @@
     // Submit
     document.getElementById('submitBtn').addEventListener('click', submitAssessment);
 
-    // Show first section
-    showSection(0);
+    // Show phone page first
+    setupPhonePage();
+    showSection(0); // phone
   }
 
   init();
