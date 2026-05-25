@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.cssrs.tunnel</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/ssh</string>
+        <string>-N</string>
+        <string>-o</string>
+        <string>GatewayPorts=yes</string>
+        <string>-o</string>
+        <string>ServerAliveInterval=60</string>
+        <string>-o</string>
+        <string>ServerAliveCountMax=3</string>
+        <string>-o</string>
+        <string>StrictHostKeyChecking=no</string>
+        <string>-o</string>
+        <string>ExitOnForwardFailure=yes</string>
+        <string>-i</string>
+        <string>/Users/zujing/.ssh/id_ed25519_cloud</string>
+        <string>-R</string>
+        <string>0.0.0.0:8889:127.0.0.1:8000</string>
+        <string>ubuntu@82.156.238.242</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
+    <key>StandardOutPath</key>
+    <string>/Users/zujing/Developer/cssrs-system/logs/tunnel.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/zujing/Developer/cssrs-system/logs/tunnel.err.log</string>
+</dict>
+</plist>

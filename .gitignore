@@ -23,3 +23,6 @@ logs/*.log
 
 # Personal (not for public)
 manual.html
+config.sh
+*.key
+*.pem

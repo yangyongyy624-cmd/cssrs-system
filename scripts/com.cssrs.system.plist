@@ -4,31 +4,35 @@
 <dict>
     <key>Label</key>
     <string>com.cssrs.system</string>
+    <key>WorkingDirectory</key>
+    <string>/Users/zujing/Developer/cssrs-system/backend</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/bin/bash</string>
-        <string>/path/to/cssrs-system/scripts/start-local.sh</string>
-        <string>--daemon</string>
+        <string>/Users/zujing/Developer/cssrs-system/.venv/bin/python</string>
+        <string>-m</string>
+        <string>uvicorn</string>
+        <string>main:app</string>
+        <string>--host</string>
+        <string>0.0.0.0</string>
+        <string>--port</string>
+        <string>8000</string>
+        <string>--log-level</string>
+        <string>info</string>
     </array>
     <key>EnvironmentVariables</key>
     <dict>
         <key>PROJECT_DIR</key>
-        <string>/path/to/cssrs-system</string>
+        <string>/Users/zujing/Developer/cssrs-system</string>
     </dict>
-    <key>WorkingDirectory</key>
-    <string>/path/to/cssrs-system</string>
     <key>RunAtLoad</key>
     <true/>
     <key>KeepAlive</key>
-    <dict>
-        <key>SuccessfulExit</key>
-        <false/>
-    </dict>
+    <true/>
     <key>ThrottleInterval</key>
-    <integer>30</integer>
+    <integer>10</integer>
     <key>StandardOutPath</key>
-    <string>/path/to/cssrs-system/logs/launchd.out.log</string>
+    <string>/Users/zujing/Developer/cssrs-system/logs/launchd.out.log</string>
     <key>StandardErrorPath</key>
-    <string>/path/to/cssrs-system/logs/launchd.err.log</string>
+    <string>/Users/zujing/Developer/cssrs-system/logs/launchd.err.log</string>
 </dict>
 </plist>

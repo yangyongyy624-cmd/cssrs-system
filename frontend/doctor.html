@@ -686,7 +686,7 @@
 <div id="list-view" class="container">
   <div class="toolbar">
     <div class="search-box">
-      <input type="text" id="search-input" placeholder="搜索患者ID..." oninput="filterTable()">
+      <input type="text" id="search-input" placeholder="搜索患者ID或手机号..." oninput="filterTable()">
     </div>
     <div class="stat-summary" id="stat-summary"></div>
   </div>
@@ -695,6 +695,7 @@
       <thead>
         <tr>
           <th>患者ID</th>
+          <th>手机号</th>
           <th>评估日期</th>
           <th>风险等级</th>
           <th>严重度</th>
@@ -734,10 +735,14 @@
   <div class="modal">
     <div id="modal-step-input">
       <div class="modal-title">新建评估</div>
-      <div class="modal-desc">输入患者ID以创建新的评估会话</div>
+      <div class="modal-desc">输入患者信息以创建新的评估</div>
       <div class="modal-input-group">
         <label for="patient-id-input">患者ID</label>
         <input type="text" id="patient-id-input" placeholder="输入患者ID或留空自动生成" autofocus>
+      </div>
+      <div class="modal-input-group">
+        <label for="patient-phone-input">患者手机号</label>
+        <input type="tel" id="patient-phone-input" placeholder="请输入患者手机号" inputmode="numeric" pattern="[0-9]*" maxlength="11">
       </div>
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="closeModal()">取消</button>
@@ -760,11 +765,12 @@
 
       <!-- QR code (alternative) -->
       <div style="text-align:center; border-top:1px solid #e5e7eb; padding-top:16px; margin-top:16px;">
-        <div style="font-size:12px; color:#9ca3af; margin-bottom:12px;">或使用二维码（如无法输入访问码）</div>
+        <div style="font-size:12px; color:#9ca3af; margin-bottom:12px;">或让患者直接扫码（手机摄像头即可）</div>
         <div class="qr-section" style="margin:0; padding:0; border:none;">
           <img id="qr-image" src="" alt="QR Code" width="160" height="160">
-          <div class="qr-hint" style="font-size:11px;">
-            微信如无法打开，请用 Safari 扫描
+          <div class="qr-hint" style="font-size:11px; margin-top:8px;">
+            <strong>iPhone：</strong>打开「相机」对准二维码，点击弹出的链接<br>
+            <strong>安卓：</strong>打开「相机」或微信「扫一扫」
           </div>
         </div>
       </div>
@@ -855,6 +861,7 @@ async function loadReport(sessionId) {
 
 async function createSession() {
   const patientId = document.getElementById('patient-id-input').value.trim();
+  const patientPhone = document.getElementById('patient-phone-input').value.trim();
   if (!patientId) {
     // Generate a patient ID: P + timestamp
     const generated = 'P' + Date.now().toString().slice(-8);
@@ -866,7 +873,7 @@ async function createSession() {
     const res = await fetch(`${API_BASE}/api/sessions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ patient_id: patientId }),
+      body: JSON.stringify({ patient_id: patientId, patient_phone: patientPhone || undefined }),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
@@ -874,7 +881,7 @@ async function createSession() {
     const sessionId = data.session_id;
     const accessCode = data.access_code || '';
     // Use server-side QR endpoint which auto-embeds LAN IP
-    const qrUrl = `/api/qr/${sessionId}`;
+    const qrUrl = `/api/qr/${accessCode}`;
     const baseUrl = `${window.location.protocol}//${window.location.hostname}:8000/code`;
 
     document.getElementById('modal-step-input').style.display = 'none';
@@ -931,6 +938,7 @@ function renderTable(assessments) {
     return `
       <tr onclick="showReportView('${a.session_id}')">
         <td><strong>${escapeHtml(a.patient_id)}</strong></td>
+        <td style="color:var(--text-secondary); font-size:13px;">${a.patient_phone ? escapeHtml(a.patient_phone) : '-'}</td>
         <td>${formatDate(a.assessment_date)}</td>
         <td>
           <span class="risk-badge ${riskClass}">
@@ -1244,7 +1252,8 @@ function filterTable() {
     return;
   }
   const filtered = allAssessments.filter(a =>
-    (a.patient_id || '').toLowerCase().includes(query)
+    (a.patient_id || '').toLowerCase().includes(query) ||
+    (a.patient_phone || '').includes(query)
   );
   renderTable(filtered);
   renderStats(filtered);

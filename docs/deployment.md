@@ -213,7 +213,7 @@ launchctl load ~/Library/LaunchAgents/com.cssrs.tunnel.plist
 
 医生通过浏览器访问云端网关，认证后可查看：
 
-1. **评估列表**：患者ID、日期、风险等级、意念严重度、意念强度
+1. **评估列表**：患者ID、**手机号**、日期、风险等级、意念严重度、意念强度
 2. **完整报告**（点击任意记录进入）：
    - C-SSRS 评分摘要（意念严重度 0-5、意念强度 0-25、致死性 0-6、综合风险）
    - **患者答卷原文**（意念出现时间、持续多久、自杀方法、地点、时机、意图强度、准备行为等）
@@ -222,6 +222,7 @@ launchctl load ~/Library/LaunchAgents/com.cssrs.tunnel.plist
    - 处理建议（即时干预列表）
    - 随访计划
    - 预警信号
+3. **手机号搜索**：输入至少 4 位手机号，搜索该患者所有历史评估记录
 
 ### 4.2 OpenClaw 语音助手
 
@@ -231,6 +232,10 @@ OpenClaw 调用云端 API 查看数据：
 # 脱敏摘要（仅风险等级，适合日常巡查）
 GET /api/summary?limit=5
 返回: 患者ID + 风险等级 + 日期
+
+# 手机号搜索（输入至少4位）
+GET /api/search?phone=13800
+返回: 匹配的患者评估记录列表
 
 # 完整答卷（含所有文字内容）
 GET /api/report/{session_id}
@@ -243,8 +248,9 @@ GET /api/patient/{patient_id}/history
 
 **数据访问权限说明：**
 - `/api/summary` — 脱敏摘要，仅返回风险等级，适合语音播报
+- `/api/search` — 按手机号搜索患者评估记录（部分匹配）
 - `/api/report/{id}` — 完整数据，含患者答卷原文，适合医生详细查看
-- 医生端网页 — 通过 PIN 认证后访问，可浏览列表和完整报告
+- 医生端网页 — 通过 PIN 认证后访问，可浏览列表、搜索和完整报告
 
 ---
 
@@ -254,7 +260,7 @@ GET /api/patient/{patient_id}/history
 # 1. 创建 session
 curl -s -X POST http://YOUR_SERVER_IP:8888/api/sessions \
   -H "Content-Type: application/json" \
-  -d '{"patient_id":"deploy-test-001","version":"baseline"}'
+  -d '{"patient_id":"deploy-test-001","patient_phone":"13800138000","version":"baseline"}'
 
 # 2. 提交评估 (注意端点是 /api/assess，不是 /api/submit)
 curl -s -X POST "http://YOUR_SERVER_IP:8888/api/assess/{session_id}" \
@@ -321,8 +327,9 @@ ssh ubuntu@YOUR_SERVER_IP "sudo kill <PID>"       # 杀掉
 
 | 文件 | 说明 | 是否公开 |
 |------|------|----------|
-| `backend/cssrs.db` | SQLite 数据库，含所有评估数据 | ❌ 加入 .gitignore |
-| `backend/cssrs_gateway.db` | 云端网关数据库 (session + PIN) | ❌ 不公开 |
+| `backend/cssrs.db` | SQLite 数据库（本地 Mac），含所有评估数据 | ❌ 加入 .gitignore |
+| `backend/cssrs_cloud.db` | SQLite 数据库（云端网关），仅含 session + 医生 PIN | ❌ 加入 .gitignore |
 | `logs/` | 运行日志 | ❌ 加入 .gitignore |
 | `.env` | 环境变量 (如有) | ❌ 加入 .gitignore |
 | `.env.example` | 配置模板 | ✅ 公开 |
+| `config.sh` | 个人配置（含服务器地址等） | ❌ 加入 .gitignore |

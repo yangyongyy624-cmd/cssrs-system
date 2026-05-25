@@ -5,8 +5,9 @@ from typing import Optional
 
 class SessionCreate(BaseModel):
     patient_id: str
+    patient_phone: Optional[str] = None
     version: str = "baseline"
-    session_id: Optional[str] = None  # If provided, use it (for cloud-initiated sessions)
+    session_id: Optional[str] = None
 
 
 class IdeationInput(BaseModel):
@@ -32,11 +33,11 @@ class IdeationInput(BaseModel):
 
 
 class IntensityInput(BaseModel):
-    frequency: int = 0
-    duration: int = 0
-    controllability: int = 0
-    deterrents: int = 0
-    reason: int = 0
+    frequency: int | None = None
+    duration: int | None = None
+    controllability: int | None = None
+    deterrents: int | None = None
+    reason: int | None = None
 
 
 class BehaviorInput(BaseModel):
@@ -69,6 +70,7 @@ class BehaviorInput(BaseModel):
 
 
 class AssessRequest(BaseModel):
+    patient_phone: Optional[str] = None
     ideation: IdeationInput
     intensity: IntensityInput
     behavior: BehaviorInput
@@ -88,6 +90,7 @@ class IntensityResponse(BaseModel):
 class AssessmentResponse(BaseModel):
     session_id: str
     patient_id: str
+    patient_phone: Optional[str] = None
     assessment_date: str
     screener_result: str
     ideation_severity: IdeationSeverityResponse

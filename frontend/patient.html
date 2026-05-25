@@ -684,9 +684,10 @@
 (function() {
   'use strict';
 
-  // Parse session_id
+  // Parse session_id and phone
   const params = new URLSearchParams(window.location.search);
   const sessionId = params.get('session') || params.get('session_id');
+  const patientPhone = params.get('phone') || '';
 
   // State
   const state = {
@@ -905,6 +906,7 @@
     const f = state.followup;
     return {
       session_id: sessionId,
+      patient_phone: patientPhone || null,
       ideation: {
         i1_wish_dead: a.i1 === true,
         i1_onset: f.i1_onset,

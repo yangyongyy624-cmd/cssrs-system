@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>C-SSRS 连接测试</title>
+<style>
+body { font-family: -apple-system, sans-serif; padding: 20px; background: #f5f7fa; }
+.card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+.ok { color: #22c55e; } .fail { color: #ef4444; } .pending { color: #f59e0b; }
+</style>
+</head>
+<body>
+<h2>C-SSRS 连接测试</h2>
+<div id="results"></div>
+<script>
+(function() {
+  var results = document.getElementById('results');
+  function addResult(label, ok, detail) {
+    var div = document.createElement('div');
+    div.className = 'card';
+    div.innerHTML = '<div class="' + (ok ? 'ok' : 'fail') + '">' + label + '</div>' +
+                    '<div style="font-size:13px;color:#666;margin-top:4px;">' + detail + '</div>';
+    results.appendChild(div);
+  }
+
+  addResult('1. 页面加载成功', true, 'URL: ' + window.location.href);
+
+  fetch('/api/code/LVFJ7K')
+    .then(function(r) {
+      if (r.ok) {
+        return r.json().then(function(d) {
+          var sid = d.session_id;
+          addResult('2. API 查询成功', true, 'session: ' + sid.substring(0,8));
+          var fullUrl = window.location.origin + '/patient.html?session=' + sid;
+          addResult('3. 患者页面', true, '可访问: ' + fullUrl);
+        });
+      } else {
+        addResult('2. API 查询', false, 'HTTP ' + r.status);
+      }
+    })
+    .catch(function(e) {
+      addResult('2. API 查询', false, e.message);
+    });
+})();
+</script>
+</body>
+</html>

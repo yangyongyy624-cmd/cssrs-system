@@ -32,7 +32,7 @@ from scorer import (
 from models import SessionCreate, AssessRequest, AssessmentResponse
 from database import (
     init_db, save_assessment, get_assessment, list_assessments, get_patient_history,
-    create_session, get_session, resolve_access_code,
+    create_session, get_session, resolve_access_code, search_by_phone,
 )
 
 app = FastAPI(title="C-SSRS Electronic Assessment System")
@@ -67,7 +67,7 @@ init_db()
 def serve_doctor_page():
     doctor_html = frontend_dir / "doctor.html"
     if doctor_html.exists():
-        return FileResponse(str(doctor_html))
+        return FileResponse(str(doctor_html), headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
     return {"message": "C-SSRS Electronic Assessment System API", "docs": "/docs"}
 
 
@@ -87,6 +87,19 @@ def serve_code_page():
     raise HTTPException(status_code=404, detail="code.html not found")
 
 
+
+
+@app.get("/code.html")
+def serve_code_html():
+    from fastapi import Response
+    c = frontend_dir / "code.html"
+    if not c.exists():
+        raise HTTPException(404)
+    with open(c, "r") as f:
+        content = f.read()
+    return Response(content=content, media_type="text/html",
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+
 # ── API routes ──
 
 @app.get("/api/code/{code}")
@@ -98,16 +111,18 @@ def lookup_code(code: str):
     return {
         "session_id": session["session_id"],
         "patient_id": session["patient_id"],
+        "patient_phone": session.get("patient_phone"),
         "access_code": session["access_code"],
     }
 
 @app.post("/api/sessions")
 def create_session_endpoint(req: SessionCreate):
     session_id = req.session_id or str(uuid.uuid4())
-    access_code = create_session(session_id, req.patient_id, req.version)
+    access_code = create_session(session_id, req.patient_id, req.version, req.patient_phone)
     return {
         "session_id": session_id,
         "patient_id": req.patient_id,
+        "patient_phone": req.patient_phone,
         "access_code": access_code,
         "version": req.version,
         "created_at": datetime.utcnow().isoformat(),
@@ -137,6 +152,7 @@ def submit_assessment(session_id: str, req: AssessRequest):
         raise HTTPException(status_code=404, detail="Session not found")
 
     patient_id = session["patient_id"]
+    patient_phone = session.get("patient_phone")
     version = session["version"]
 
     ideation = IdeationAnswers(**req.ideation.model_dump())
@@ -154,6 +170,8 @@ def submit_assessment(session_id: str, req: AssessRequest):
 
     result_dict = result.to_dict()
     result_dict["version"] = version
+    # Use phone from request if provided, else from session
+    result_dict["patient_phone"] = req.patient_phone or patient_phone
     # Flatten nested structures for DB columns
     result_dict["severity_score"] = result.ideation_severity_score
     result_dict["severity_name"] = result.ideation_severity_name
@@ -198,6 +216,15 @@ def get_report(session_id: str):
 def patient_history(patient_id: str):
     rows = get_patient_history(patient_id)
     return {"patient_id": patient_id, "assessments": rows}
+
+
+@app.get("/api/search")
+def search_patient(phone: str):
+    """Search assessments by patient phone number (partial match)."""
+    if not phone or len(phone.strip()) < 4:
+        raise HTTPException(400, "请输入至少4位手机号")
+    rows = search_by_phone(phone.strip())
+    return {"phone": phone, "count": len(rows), "assessments": rows}
 
 
 @app.get("/api/export/scores")
@@ -248,10 +275,10 @@ def summary_endpoint(limit: int = 5):
     }
 
 
-@app.get("/api/qr/{session_id}")
-def generate_qr(session_id: str):
-    """Generate a QR code PNG that links to the patient self-assessment page."""
-    qr_url = f"http://{LOCAL_IP}:{LOCAL_PORT}/patient.html?session={session_id}"
+@app.get("/api/qr/{access_code}")
+def generate_qr(access_code: str):
+    """Generate a QR code PNG that links to the patient self-assessment page via cloud gateway."""
+    qr_url = f"http://82.156.238.242:8888/code?code={access_code}"
     qr = qrcode.QRCode(
         version=1,
         error_correction=qrcode.constants.ERROR_CORRECT_L,

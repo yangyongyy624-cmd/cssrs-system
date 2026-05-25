@@ -17,15 +17,15 @@ def generate_access_code() -> str:
     return "".join(random.choices(CODE_CHARS, k=CODE_LEN))
 
 
-def create_session(session_id: str, patient_id: str, version: str = "baseline"):
+def create_session(session_id: str, patient_id: str, version: str = "baseline", patient_phone: Optional[str] = None):
     conn = get_db()
     access_code = generate_access_code()
     # Ensure uniqueness
     while conn.execute("SELECT 1 FROM cssrs_sessions WHERE access_code = ?", (access_code,)).fetchone():
         access_code = generate_access_code()
     conn.execute(
-        "INSERT INTO cssrs_sessions (session_id, patient_id, version, access_code) VALUES (?, ?, ?, ?)",
-        (session_id, patient_id, version, access_code),
+        "INSERT INTO cssrs_sessions (session_id, patient_id, version, access_code, patient_phone) VALUES (?, ?, ?, ?, ?)",
+        (session_id, patient_id, version, access_code, patient_phone),
     )
     conn.commit()
     conn.close()
@@ -65,13 +65,20 @@ def init_db():
             patient_id TEXT NOT NULL,
             version TEXT DEFAULT 'baseline',
             access_code TEXT UNIQUE,
+            patient_phone TEXT,
             created_at TEXT DEFAULT (datetime('now'))
         )
     """)
+    # Migration: add patient_phone column if it doesn't exist
+    columns = [row[1] for row in conn.execute("PRAGMA table_info(cssrs_sessions)").fetchall()]
+    if "patient_phone" not in columns:
+        conn.execute("ALTER TABLE cssrs_sessions ADD COLUMN patient_phone TEXT")
+        conn.commit()
     conn.execute("""
         CREATE TABLE IF NOT EXISTS cssrs_assessments (
             session_id TEXT PRIMARY KEY,
             patient_id TEXT NOT NULL,
+            patient_phone TEXT,
             assessment_date TEXT NOT NULL,
             version TEXT DEFAULT 'baseline',
             screener_result TEXT,
@@ -97,6 +104,11 @@ def init_db():
             created_at TEXT DEFAULT (datetime('now'))
         )
     """)
+    # Migration: add patient_phone to assessments
+    columns2 = [row[1] for row in conn.execute("PRAGMA table_info(cssrs_assessments)").fetchall()]
+    if "patient_phone" not in columns2:
+        conn.execute("ALTER TABLE cssrs_assessments ADD COLUMN patient_phone TEXT")
+        conn.commit()
     conn.commit()
     conn.close()
 
@@ -105,7 +117,7 @@ def save_assessment(result: dict):
     """Insert an assessment row. result is to_dict() output merged with raw inputs."""
     conn = get_db()
     columns = [
-        "session_id", "patient_id", "assessment_date", "version", "screener_result",
+        "session_id", "patient_id", "patient_phone", "assessment_date", "version", "screener_result",
         "i1_wish_dead", "i1_onset", "i1_duration", "i1_frequency",
         "i2_non_specific", "i2_nature", "i2_frequency", "i2_duration",
         "i3_with_method", "i3_method", "i3_location", "i3_timing",
@@ -126,7 +138,7 @@ def save_assessment(result: dict):
     placeholders = ", ".join("?" for _ in columns)
     col_names = ", ".join(columns)
     values = [
-        result["session_id"], result["patient_id"], result["assessment_date"],
+        result["session_id"], result["patient_id"], result.get("patient_phone"), result["assessment_date"],
         result.get("version", "baseline"), result.get("screener_result"),
         # Ideation
         result.get("i1_wish_dead"), result.get("i1_onset"), result.get("i1_duration"), result.get("i1_frequency"),
@@ -185,6 +197,17 @@ def get_patient_history(patient_id: str) -> list[dict]:
     rows = conn.execute(
         "SELECT * FROM cssrs_assessments WHERE patient_id = ? ORDER BY created_at DESC",
         (patient_id,),
+    ).fetchall()
+    conn.close()
+    return [_row_to_dict(r) for r in rows]
+
+
+def search_by_phone(phone: str) -> list[dict]:
+    """Find all assessments for a given phone number (partial match)."""
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT * FROM cssrs_assessments WHERE patient_phone LIKE ? ORDER BY created_at DESC",
+        (f"%{phone}%",),
     ).fetchall()
     conn.close()
     return [_row_to_dict(r) for r in rows]
