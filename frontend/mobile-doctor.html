@@ -434,8 +434,27 @@ body {
 const API = window.location.origin;
 let pollTimer = null;
 let currentSessionId = null;
-let doctorPIN = localStorage.getItem('cssrs_doctor_pin') || '';
-let doctorName = localStorage.getItem('cssrs_doctor_name') || '';
+// ── Storage helper: localStorage with cookie fallback (WeChat browser doesn't persist localStorage well) ──
+var Storage = {
+  get: function(key) {
+    try { return localStorage.getItem(key) || ''; } catch(e) {}
+    // Fallback to cookie
+    var m = document.cookie.match(new RegExp('(^| )' + key + '=([^;]+)'));
+    return m ? decodeURIComponent(m[2]) : '';
+  },
+  set: function(key, val) {
+    try { localStorage.setItem(key, val); } catch(e) {}
+    // Also set cookie (30 days expiry)
+    document.cookie = key + '=' + encodeURIComponent(val) + '; max-age=' + (30*24*60*60) + '; path=/; SameSite=Lax';
+  },
+  remove: function(key) {
+    try { localStorage.removeItem(key); } catch(e) {}
+    document.cookie = key + '=; max-age=0; path=/; SameSite=Lax';
+  }
+};
+
+let doctorPIN = Storage.get('cssrs_doctor_pin') || '';
+let doctorName = Storage.get('cssrs_doctor_name') || '';
 let pinMap = {}; // PIN -> doctor name mapping
 
 // ── Auth headers helper ──
@@ -461,8 +480,8 @@ function authFetch(url, opts) {
 function logout(msg) {
   doctorPIN = '';
   doctorName = '';
-  localStorage.removeItem('cssrs_doctor_pin');
-  localStorage.removeItem('cssrs_doctor_name');
+  Storage.remove('cssrs_doctor_pin');
+  Storage.remove('cssrs_doctor_name');
   if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
   showPINView(msg);
 }
@@ -509,8 +528,8 @@ function submitPIN() {
   .then(function(data) {
     doctorPIN = pin;
     doctorName = data.doctor_name;
-    localStorage.setItem('cssrs_doctor_pin', pin);
-    localStorage.setItem('cssrs_doctor_name', data.doctor_name);
+    Storage.set('cssrs_doctor_pin', pin);
+    Storage.set('cssrs_doctor_name', data.doctor_name);
 
     loadDoctorPins();
     document.getElementById('view-pin').classList.remove('active');
@@ -840,7 +859,7 @@ if (doctorPIN) {
   })
   .then(function(data) {
     doctorName = data.doctor_name;
-    localStorage.setItem('cssrs_doctor_name', doctorName);
+    Storage.set('cssrs_doctor_name', doctorName);
     loadDoctorPins();
     enterApp();
   })
