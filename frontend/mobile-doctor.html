@@ -321,7 +321,8 @@ body {
     <span id="header-title-text">C-SSRS 医生端</span>
   </div>
   <div>
-    <a href="/admin" style="color:white; text-decoration:none; font-size:13px; padding:8px 12px; opacity:0.8; margin-right:4px;">⚙️</a>
+    <a href="/admin" style="color:white; text-decoration:none; font-size:13px; padding:8px 12px; opacity:0.8; margin-right:2px;">⚙️</a>
+    <button class="header-btn" id="header-logout" style="display:none;" onclick="logout()">🔒</button>
     <button class="header-btn" id="header-back" style="display:none;" onclick="goBack()">← 返回</button>
   </div>
 </div>
@@ -330,7 +331,7 @@ body {
 <div class="pin-view active" id="view-pin">
   <div class="pin-lock-icon">🔐</div>
   <div class="pin-title">医生准入验证</div>
-  <div class="pin-subtitle">请输入您的4位准入码</div>
+  <div class="pin-subtitle">请输入您的4位准入码（输入一次即可，下次自动登录）</div>
 
   <div class="pin-inputs" id="pin-inputs">
     <input class="pin-digit" maxlength="1" data-idx="0" autocomplete="off" inputmode="numeric" pattern="[0-9]">
@@ -432,8 +433,8 @@ body {
 const API = window.location.origin;
 let pollTimer = null;
 let currentSessionId = null;
-let doctorPIN = sessionStorage.getItem('cssrs_doctor_pin') || '';
-let doctorName = sessionStorage.getItem('cssrs_doctor_name') || '';
+let doctorPIN = localStorage.getItem('cssrs_doctor_pin') || '';
+let doctorName = localStorage.getItem('cssrs_doctor_name') || '';
 
 // ── Auth headers helper ──
 function authHeaders() {
@@ -458,8 +459,8 @@ function authFetch(url, opts) {
 function logout(msg) {
   doctorPIN = '';
   doctorName = '';
-  sessionStorage.removeItem('cssrs_doctor_pin');
-  sessionStorage.removeItem('cssrs_doctor_name');
+  localStorage.removeItem('cssrs_doctor_pin');
+  localStorage.removeItem('cssrs_doctor_name');
   if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
   showPINView(msg);
 }
@@ -506,8 +507,8 @@ function submitPIN() {
   .then(function(data) {
     doctorPIN = pin;
     doctorName = data.doctor_name;
-    sessionStorage.setItem('cssrs_doctor_pin', pin);
-    sessionStorage.setItem('cssrs_doctor_name', data.doctor_name);
+    localStorage.setItem('cssrs_doctor_pin', pin);
+    localStorage.setItem('cssrs_doctor_name', data.doctor_name);
 
     document.getElementById('view-pin').classList.remove('active');
     enterApp();
@@ -570,9 +571,11 @@ function showView(name) {
 
   var fab = document.getElementById('fab');
   var backBtn = document.getElementById('header-back');
+  var logoutBtn = document.getElementById('header-logout');
 
   fab.style.display = name === 'list' ? 'flex' : 'none';
   backBtn.style.display = name === 'list' ? 'none' : 'block';
+  logoutBtn.style.display = name === 'list' ? 'block' : 'none';
 
   if (name === 'list') {
     if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
@@ -822,7 +825,7 @@ if (doctorPIN) {
   })
   .then(function(data) {
     doctorName = data.doctor_name;
-    sessionStorage.setItem('cssrs_doctor_name', doctorName);
+    localStorage.setItem('cssrs_doctor_name', doctorName);
     enterApp();
   })
   .catch(function() {
