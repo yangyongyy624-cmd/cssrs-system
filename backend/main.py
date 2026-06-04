@@ -123,9 +123,10 @@ def lookup_code(code: str):
     }
 
 @app.post("/api/sessions")
-def create_session_endpoint(req: SessionCreate):
+def create_session_endpoint(req: SessionCreate, request: Request):
+    doctor = require_pin(request)
     session_id = req.session_id or str(uuid.uuid4())
-    access_code = create_session(session_id, req.patient_id, req.version, req.patient_phone)
+    access_code = create_session(session_id, req.patient_id, req.version, req.patient_phone, doctor["pin"])
     return {
         "session_id": session_id,
         "patient_id": req.patient_id,
@@ -179,6 +180,7 @@ def submit_assessment(session_id: str, req: AssessRequest):
     result_dict["version"] = version
     # Use phone from request if provided, else from session
     result_dict["patient_phone"] = req.patient_phone or patient_phone
+    result_dict["doctor_pin"] = session.get("doctor_pin")
     # Flatten nested structures for DB columns
     result_dict["severity_score"] = result.ideation_severity_score
     result_dict["severity_name"] = result.ideation_severity_name

@@ -183,7 +183,7 @@ body {
 /* ── FAB ── */
 .fab {
   position: fixed;
-  bottom: 120px;
+  bottom: 160px;
   right: 20px;
   width: 56px;
   height: 56px;
@@ -221,6 +221,7 @@ body {
 }
 .card-patient { font-size: 16px; font-weight: 600; }
 .card-phone { font-size: 13px; color: var(--text-secondary); font-family: "SF Mono", monospace; }
+.card-doctor { font-size: 12px; color: #7C3AED; font-weight: 600; margin-top: 2px; }
 .card-date { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
 
 /* ── Risk badge ── */
@@ -435,6 +436,7 @@ let pollTimer = null;
 let currentSessionId = null;
 let doctorPIN = localStorage.getItem('cssrs_doctor_pin') || '';
 let doctorName = localStorage.getItem('cssrs_doctor_name') || '';
+let pinMap = {}; // PIN -> doctor name mapping
 
 // ── Auth headers helper ──
 function authHeaders() {
@@ -510,6 +512,7 @@ function submitPIN() {
     localStorage.setItem('cssrs_doctor_pin', pin);
     localStorage.setItem('cssrs_doctor_name', data.doctor_name);
 
+    loadDoctorPins();
     document.getElementById('view-pin').classList.remove('active');
     enterApp();
   })
@@ -601,7 +604,18 @@ function toast(msg) {
   setTimeout(function() { el.classList.remove('show'); }, 2500);
 }
 
-// ── API: Load assessments ──
+// ── API: Load doctor PIN list ──
+async function loadDoctorPins() {
+  try {
+    const res = await fetch(API + '/api/admin/pins');
+    if (!res.ok) return;
+    const pins = await res.json();
+    pinMap = {};
+    pins.forEach(function(p) { if(p.is_active) pinMap[p.pin] = p.doctor_name; });
+  } catch(e) { /* ignore */ }
+}
+
+// ── API: Load assessments ─
 async function loadAssessments() {
   try {
     const res = await authFetch(API + '/api/report');
@@ -641,6 +655,7 @@ function renderCards(data) {
         '<div>' +
           '<div class="card-patient">' + escapeHtml(a.patient_id) + '</div>' +
           (a.patient_phone ? '<div class="card-phone">' + escapeHtml(a.patient_phone) + '</div>' : '') +
+          (a.doctor_pin && pinMap[a.doctor_pin] ? '<div class="card-doctor">👨‍⚕️ ' + escapeHtml(pinMap[a.doctor_pin]) + '</div>' : '') +
         '</div>' +
         '<span class="risk-badge ' + riskClass + '"><span class="dot"></span>' + riskLabel + '</span>' +
       '</div>' +
@@ -826,6 +841,7 @@ if (doctorPIN) {
   .then(function(data) {
     doctorName = data.doctor_name;
     localStorage.setItem('cssrs_doctor_name', doctorName);
+    loadDoctorPins();
     enterApp();
   })
   .catch(function() {

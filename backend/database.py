@@ -20,15 +20,15 @@ def generate_access_code() -> str:
     return "".join(random.choices(CODE_CHARS, k=CODE_LEN))
 
 
-def create_session(session_id: str, patient_id: str, version: str = "baseline", patient_phone: Optional[str] = None):
+def create_session(session_id: str, patient_id: str, version: str = "baseline", patient_phone: Optional[str] = None, doctor_pin: Optional[str] = None):
     conn = get_db()
     access_code = generate_access_code()
     # Ensure uniqueness
     while conn.execute("SELECT 1 FROM cssrs_sessions WHERE access_code = ?", (access_code,)).fetchone():
         access_code = generate_access_code()
     conn.execute(
-        "INSERT INTO cssrs_sessions (session_id, patient_id, version, access_code, patient_phone) VALUES (?, ?, ?, ?, ?)",
-        (session_id, patient_id, version, access_code, patient_phone),
+        "INSERT INTO cssrs_sessions (session_id, patient_id, version, access_code, patient_phone, doctor_pin) VALUES (?, ?, ?, ?, ?, ?)",
+        (session_id, patient_id, version, access_code, patient_phone, doctor_pin),
     )
     conn.commit()
     conn.close()
@@ -77,6 +77,9 @@ def init_db():
     if "patient_phone" not in columns:
         conn.execute("ALTER TABLE cssrs_sessions ADD COLUMN patient_phone TEXT")
         conn.commit()
+    if "doctor_pin" not in columns:
+        conn.execute("ALTER TABLE cssrs_sessions ADD COLUMN doctor_pin TEXT")
+        conn.commit()
     conn.execute("""
         CREATE TABLE IF NOT EXISTS cssrs_assessments (
             session_id TEXT PRIMARY KEY,
@@ -112,6 +115,9 @@ def init_db():
     if "patient_phone" not in columns2:
         conn.execute("ALTER TABLE cssrs_assessments ADD COLUMN patient_phone TEXT")
         conn.commit()
+    if "doctor_pin" not in columns2:
+        conn.execute("ALTER TABLE cssrs_assessments ADD COLUMN doctor_pin TEXT")
+        conn.commit()
     conn.commit()
     conn.close()
 
@@ -120,7 +126,7 @@ def save_assessment(result: dict):
     """Insert an assessment row. result is to_dict() output merged with raw inputs."""
     conn = get_db()
     columns = [
-        "session_id", "patient_id", "patient_phone", "assessment_date", "version", "screener_result",
+        "session_id", "patient_id", "patient_phone", "doctor_pin", "assessment_date", "version", "screener_result",
         "i1_wish_dead", "i1_onset", "i1_duration", "i1_frequency",
         "i2_non_specific", "i2_nature", "i2_frequency", "i2_duration",
         "i3_with_method", "i3_method", "i3_location", "i3_timing",
@@ -141,7 +147,7 @@ def save_assessment(result: dict):
     placeholders = ", ".join("?" for _ in columns)
     col_names = ", ".join(columns)
     values = [
-        result["session_id"], result["patient_id"], result.get("patient_phone"), result["assessment_date"],
+        result["session_id"], result["patient_id"], result.get("patient_phone"), result.get("doctor_pin"), result["assessment_date"],
         result.get("version", "baseline"), result.get("screener_result"),
         # Ideation
         result.get("i1_wish_dead"), result.get("i1_onset"), result.get("i1_duration"), result.get("i1_frequency"),
