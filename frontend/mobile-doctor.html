@@ -353,7 +353,7 @@ body {
 </div>
 
 <!-- View 1: List -->
-<div class="view" id="view-list">
+<div class="view" id="view-list" style="display:none;">
   <div class="stats-bar" id="stats-bar"></div>
   <div id="cards-container"></div>
   <div class="empty-state" id="empty-state" style="display:none;">
@@ -364,7 +364,7 @@ body {
 </div>
 
 <!-- View 2: Create -->
-<div class="view" id="view-create">
+<div class="view" id="view-create" style="display:none;">
   <div class="create-card">
     <h2>新建评估</h2>
     <p class="subtitle">输入患者信息以创建新的评估</p>
@@ -385,7 +385,7 @@ body {
 </div>
 
 <!-- View 3: QR -->
-<div class="view" id="view-qr">
+<div class="view" id="view-qr" style="display:none;">
   <div class="qr-view">
     <div class="qr-patient-info">
       <div class="qr-patient-name" id="qr-patient-name"></div>
@@ -415,7 +415,7 @@ body {
 </div>
 
 <!-- View 4: Report -->
-<div class="view" id="view-report">
+<div class="view" id="view-report" style="display:none;">
   <div id="report-content"></div>
 </div>
 
@@ -850,6 +850,16 @@ function escapeHtml(s) { if(!s) return ''; var d=document.createElement('div'); 
 function escapeJs(s) { return (s||'').replace(/'/g,"\\'").replace(/\\/g,'\\\\'); }
 
 // ── Init ──
+// Check for ?reset=1 to force fresh login
+if (window.location.search.indexOf('reset=1') >= 0) {
+  Storage.remove('cssrs_doctor_pin');
+  Storage.remove('cssrs_doctor_name');
+  doctorPIN = '';
+  doctorName = '';
+  // Clean URL
+  window.history.replaceState({}, '', window.location.pathname);
+}
+
 if (doctorPIN) {
   // Trust stored PIN (same as admin page). authFetch will catch 401/403 on API calls.
   loadDoctorPins();
