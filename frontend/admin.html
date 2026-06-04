@@ -2,229 +2,185 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="C-SSRS管理">
+<meta name="theme-color" content="#7C3AED">
 <title>C-SSRS 管理后台</title>
 <style>
-* { margin:0; padding:0; box-sizing:border-box; }
-
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 :root {
-  --primary: #2563EB;
-  --bg: #F5F7FA;
-  --card: #FFFFFF;
-  --border: #E2E8F0;
-  --text: #1E293B;
-  --text-secondary: #64748B;
-  --danger: #EF4444;
-  --success: #22C55E;
-  --radius: 12px;
+  --primary: #7C3AED; --primary-dark: #6D28D9; --bg: #F5F3FF;
+  --card: #FFFFFF; --border: #E5E7EB; --text: #1E293B;
+  --text-secondary: #64748B; --danger: #EF4444; --success: #22C55E; --radius: 16px;
 }
-
 body {
-  font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: var(--bg); color: var(--text);
+  min-height: 100vh; min-height: 100dvh;
+  padding-bottom: env(safe-area-inset-bottom);
 }
-
+/* Lock view */
+.lock-view {
+  display:none; flex-direction:column; align-items:center; justify-content:center;
+  min-height:100vh; min-height:100dvh; padding:40px 20px;
+}
+.lock-view.active { display:flex; }
+.lock-icon { font-size:56px; margin-bottom:16px; }
+.lock-title { font-size:22px; font-weight:700; margin-bottom:4px; }
+.lock-subtitle { font-size:14px; color:var(--text-secondary); margin-bottom:32px; text-align:center; }
+.pin-inputs { display:flex; gap:10px; margin-bottom:24px; }
+.pin-digit {
+  width:52px; height:64px; text-align:center; font-size:28px; font-weight:700;
+  border:2px solid var(--border); border-radius:12px; background:var(--card); outline:none;
+  font-family:"SF Mono","Menlo",monospace; transition:all 0.15s;
+}
+.pin-digit:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(124,58,237,0.1); background:white; }
+.pin-digit.filled { border-color:var(--primary); background:#F5F3FF; }
+.pin-digit.error { border-color:var(--danger); background:#FEF2F2; animation:shake 0.4s ease; }
+@keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+.pin-error { color:var(--danger); font-size:14px; min-height:20px; margin-bottom:12px; text-align:center; }
+.lock-btn {
+  width:100%; max-width:240px; padding:14px; background:var(--primary); color:white;
+  border:none; border-radius:12px; font-size:16px; font-weight:600;
+  cursor:pointer; font-family:inherit;
+}
+.lock-btn:active { background:var(--primary-dark); transform:scale(0.98); }
+.lock-btn:disabled { background:#CBD5E1; cursor:not-allowed; }
+.lock-help { font-size:12px; color:var(--text-secondary); margin-top:24px; text-align:center; line-height:1.6; }
+/* Header */
 .header {
-  background: var(--primary);
-  color: white;
-  padding: 16px 24px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  box-shadow: 0 2px 8px rgba(37,99,235,0.3);
+  background:var(--primary); color:white; padding:16px 20px;
+  padding-top:max(16px, env(safe-area-inset-top));
+  display:flex; align-items:center; justify-content:space-between;
+  box-shadow:0 2px 8px rgba(124,58,237,0.3);
 }
-.header h1 { font-size: 18px; font-weight: 700; display:flex; align-items:center; gap:8px; }
-.header h1 .icon { font-size:22px; }
-
-.container { max-width: 600px; margin: 24px auto; padding: 0 16px; }
-
-/* ── Create form ── */
+.header h1 { font-size:16px; font-weight:700; display:flex; align-items:center; gap:8px; }
+.header-actions a { color:white; text-decoration:none; font-size:12px; padding:6px 10px; opacity:0.8; }
+/* Container */
+.container { max-width:600px; margin:16px auto; padding:0 16px 100px; }
+/* Create card */
 .create-card {
-  background: var(--card);
-  border-radius: var(--radius);
-  padding: 20px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-  margin-bottom: 20px;
+  background:var(--card); border-radius:var(--radius); padding:20px;
+  box-shadow:0 1px 3px rgba(0,0,0,0.06); margin-bottom:16px;
 }
-.create-card h2 { font-size: 16px; font-weight: 700; margin-bottom: 12px; }
-.form-row { display: flex; gap: 10px; }
+.create-card h2 { font-size:16px; font-weight:700; margin-bottom:12px; }
+.form-row { display:flex; gap:10px; }
 .form-row input {
-  flex: 1;
-  padding: 10px 14px;
-  border: 1.5px solid var(--border);
-  border-radius: 8px;
-  font-size: 14px;
-  font-family: inherit;
+  flex:1; padding:12px 14px; border:1.5px solid var(--border); border-radius:10px;
+  font-size:15px; font-family:inherit; background:var(--bg);
 }
-.form-row input:focus { outline: none; border-color: var(--primary); }
+.form-row input:focus { outline:none; border-color:var(--primary); background:white; }
 .form-row button {
-  padding: 10px 20px;
-  background: var(--primary);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
+  padding:12px 20px; background:var(--primary); color:white;
+  border:none; border-radius:10px; font-size:14px; font-weight:600;
+  cursor:pointer; white-space:nowrap;
 }
-.form-row button:active { background: #1D4ED8; }
-
-/* ── PIN list ── */
-.pin-card {
-  background: var(--card);
-  border-radius: var(--radius);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-  overflow: hidden;
-}
-.pin-card-header {
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--border);
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.pin-item {
-  display: flex;
-  align-items: center;
-  padding: 14px 16px;
-  border-bottom: 1px solid #F1F5F9;
-  gap: 12px;
-  transition: background 0.1s;
-}
-.pin-item:last-child { border-bottom: none; }
-.pin-item.revoked { opacity: 0.4; }
-
-.pin-number {
-  font-size: 22px;
-  font-weight: 800;
-  letter-spacing: 4px;
-  font-family: "SF Mono", "Menlo", monospace;
-  color: var(--primary);
-  min-width: 60px;
-}
-.pin-info { flex: 1; }
-.pin-name { font-size: 15px; font-weight: 600; }
-.pin-meta { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
-.pin-badge {
-  font-size: 11px;
-  padding: 3px 8px;
-  border-radius: 10px;
-  font-weight: 600;
-}
-.pin-badge.active { background: #F0FDF4; color: #15803D; }
-.pin-badge.revoked { background: #FEF2F2; color: #DC2626; }
-
-.revoke-btn {
-  padding: 6px 14px;
-  background: var(--danger);
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-}
-.revoke-btn:active { background: #DC2626; }
-.revoke-btn:disabled { background: #CBD5E1; cursor: not-allowed; }
-
-/* ── Toast ── */
-.toast {
-  position: fixed;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%) translateY(120%);
-  background: #1E293B;
-  color: white;
-  padding: 12px 24px;
-  border-radius: 10px;
-  font-size: 14px;
-  z-index: 200;
-  transition: transform 0.3s ease;
-}
-.toast.show { transform: translateX(-50%) translateY(0); }
-
-/* ── PIN reveal ── */
+.form-row button:active { background:var(--primary-dark); }
+/* PIN reveal */
 .pin-reveal {
-  margin-top: 10px;
-  padding: 10px 14px;
-  background: #EFF6FF;
-  border: 1px solid #BFDBFE;
-  border-radius: 8px;
-  display: none;
+  margin-top:14px; padding:16px; background:#F5F3FF; border:1px solid #DDD6FE; border-radius:12px; display:none;
 }
-.pin-reveal.show { display: block; }
+.pin-reveal.show { display:block; }
+.pin-reveal .label { font-size:13px; color:var(--text-secondary); text-align:center; }
 .pin-reveal .new-pin {
-  font-size: 28px;
-  font-weight: 800;
-  letter-spacing: 6px;
-  color: var(--primary);
-  font-family: "SF Mono", "Menlo", monospace;
-  text-align: center;
-  margin: 6px 0;
+  font-size:32px; font-weight:800; letter-spacing:8px;
+  color:var(--primary); font-family:"SF Mono","Menlo",monospace; text-align:center; margin:10px 0;
 }
 .pin-reveal .copy-btn {
-  display: block;
-  margin: 0 auto;
-  padding: 6px 16px;
-  background: var(--primary);
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 13px;
-  cursor: pointer;
+  display:block; margin:0 auto; padding:8px 20px; background:var(--primary); color:white;
+  border:none; border-radius:8px; font-size:13px; cursor:pointer;
 }
-.pin-reveal .warn {
-  font-size: 12px;
-  color: var(--danger);
-  text-align: center;
-  margin-top: 8px;
+.pin-reveal .warn { font-size:12px; color:var(--danger); text-align:center; margin-top:10px; }
+/* PIN list */
+.pin-card { background:var(--card); border-radius:var(--radius); box-shadow:0 1px 3px rgba(0,0,0,0.06); overflow:hidden; }
+.pin-card-header {
+  padding:14px 16px; border-bottom:1px solid var(--border);
+  font-size:13px; font-weight:600; color:var(--text-secondary);
+  display:flex; justify-content:space-between; align-items:center;
 }
-
-.empty-state {
-  text-align: center;
-  padding: 40px 20px;
-  color: var(--text-secondary);
-  font-size: 14px;
+.pin-item { display:flex; align-items:center; padding:14px 16px; border-bottom:1px solid #F1F5F9; gap:12px; }
+.pin-item:last-child { border-bottom:none; }
+.pin-item.revoked { opacity:0.4; }
+.pin-number {
+  font-size:22px; font-weight:800; letter-spacing:4px;
+  font-family:"SF Mono","Menlo",monospace; color:var(--primary); min-width:56px;
 }
+.pin-info { flex:1; }
+.pin-name { font-size:15px; font-weight:600; }
+.pin-meta { font-size:12px; color:var(--text-secondary); margin-top:2px; }
+.pin-badge { font-size:11px; padding:3px 8px; border-radius:10px; font-weight:600; }
+.pin-badge.active { background:#F0FDF4; color:#15803D; }
+.pin-badge.revoked { background:#FEF2F2; color:#DC2626; }
+.revoke-btn {
+  padding:6px 14px; background:var(--danger); color:white;
+  border:none; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;
+}
+.revoke-btn:active { background:#DC2626; }
+/* Toast */
+.toast {
+  position:fixed; bottom:max(24px, env(safe-area-inset-bottom)); left:50%;
+  transform:translateX(-50%) translateY(120%);
+  background:#1E293B; color:white; padding:12px 24px; border-radius:12px;
+  font-size:14px; z-index:200; transition:transform 0.3s ease;
+}
+.toast.show { transform:translateX(-50%) translateY(0); }
+.empty-state { text-align:center; padding:40px 20px; color:var(--text-secondary); font-size:14px; }
 </style>
 </head>
 <body>
 
-<div class="header">
-  <h1><span class="icon">⚙️</span> C-SSRS 管理后台</h1>
-  <a href="/mobile" style="color:white; text-decoration:none; font-size:13px; opacity:0.8;">📱 医生端</a>
+<!-- Lock -->
+<div class="lock-view active" id="lock-view">
+  <div class="lock-icon">🔐</div>
+  <div class="lock-title">管理后台</div>
+  <div class="lock-subtitle">请输入管理密码</div>
+  <div class="pin-inputs" id="admin-pin-inputs">
+    <input class="pin-digit" maxlength="1" data-idx="0" autocomplete="off" inputmode="numeric" pattern="[0-9]">
+    <input class="pin-digit" maxlength="1" data-idx="1" autocomplete="off" inputmode="numeric" pattern="[0-9]">
+    <input class="pin-digit" maxlength="1" data-idx="2" autocomplete="off" inputmode="numeric" pattern="[0-9]">
+    <input class="pin-digit" maxlength="1" data-idx="3" autocomplete="off" inputmode="numeric" pattern="[0-9]">
+  </div>
+  <div class="pin-error" id="admin-pin-error"></div>
+  <button class="lock-btn" id="admin-pin-submit" disabled onclick="submitAdminPIN()">验证</button>
+  <div class="lock-help">
+    管理密码由系统管理员设置<br>
+    首次使用请联系获取
+  </div>
 </div>
 
-<div class="container">
-  <!-- Create PIN -->
-  <div class="create-card">
-    <h2>➕ 新建医生准入码</h2>
-    <div class="form-row">
-      <input type="text" id="doctor-name" placeholder="医生姓名（如：张三）">
-      <input type="text" id="custom-pin" placeholder="可选：自定义PIN" maxlength="4" inputmode="numeric" pattern="[0-9]*" style="max-width:120px;">
-      <button onclick="createPIN()">创建</button>
-    </div>
-    <div class="pin-reveal" id="pin-reveal">
-      <div style="font-size:13px; color:var(--text-secondary); text-align:center;">准入码（请妥善保管）</div>
-      <div class="new-pin" id="new-pin-value"></div>
-      <button class="copy-btn" onclick="copyPIN()">📋 复制准入码</button>
-      <div class="warn">⚠️ 请将此码单独告知医生，不要通过群聊发送</div>
+<!-- Admin UI -->
+<div id="admin-ui" style="display:none;">
+  <div class="header">
+    <h1><span class="icon">⚙️</span> C-SSRS 管理后台</h1>
+    <div class="header-actions">
+      <a href="/mobile">📱 医生端</a>
+      <a href="#" onclick="logoutAdmin(); return false;">🔒 退出</a>
     </div>
   </div>
-
-  <!-- PIN List -->
-  <div class="pin-card">
-    <div class="pin-card-header">
-      <span>医生准入码列表</span>
-      <span id="pin-count"></span>
+  <div class="container">
+    <div class="create-card">
+      <h2>➕ 新建医生准入码</h2>
+      <div class="form-row">
+        <input type="text" id="doctor-name" placeholder="医生姓名">
+        <input type="text" id="custom-pin" placeholder="自定义PIN(可选)" maxlength="4" inputmode="numeric" pattern="[0-9]*" style="max-width:110px;">
+        <button onclick="createPIN()">创建</button>
+      </div>
+      <div class="pin-reveal" id="pin-reveal">
+        <div class="label">准入码（请单独告知医生）</div>
+        <div class="new-pin" id="new-pin-value"></div>
+        <button class="copy-btn" onclick="copyPIN()">📋 复制</button>
+        <div class="warn">⚠️ 不要通过群聊发送</div>
+      </div>
     </div>
-    <div id="pin-list"></div>
+    <div class="pin-card">
+      <div class="pin-card-header">
+        <span>医生准入码</span>
+        <span id="pin-count"></span>
+      </div>
+      <div id="pin-list"></div>
+    </div>
   </div>
 </div>
 
@@ -232,56 +188,94 @@ body {
 
 <script>
 const API = window.location.origin;
+const ADMIN_PIN = '8888';
+let isAdminAuthed = sessionStorage.getItem('cssrs_admin_auth') === '1';
 
 function toast(msg) {
   var el = document.getElementById('toast');
-  el.textContent = msg;
-  el.classList.add('show');
+  el.textContent = msg; el.classList.add('show');
   setTimeout(function() { el.classList.remove('show'); }, 2500);
 }
+function formatDate(s) { if(!s) return '-'; return s.replace('T',' ').slice(0,16); }
 
-function formatDate(s) {
-  if (!s) return '-';
-  return s.replace('T', ' ').slice(0, 16);
+function submitAdminPIN() {
+  var digits = document.querySelectorAll('#admin-pin-inputs .pin-digit');
+  var pin = ''; digits.forEach(function(d) { pin += d.value; });
+  if (pin.length !== 4) return;
+  if (pin === ADMIN_PIN) {
+    isAdminAuthed = true;
+    sessionStorage.setItem('cssrs_admin_auth', '1');
+    showAdminUI();
+  } else {
+    document.getElementById('admin-pin-error').textContent = '密码错误';
+    digits.forEach(function(d) { d.classList.add('error'); d.value = ''; });
+    digits[0].focus();
+  }
 }
+
+function logoutAdmin() {
+  sessionStorage.removeItem('cssrs_admin_auth');
+  isAdminAuthed = false;
+  document.getElementById('admin-ui').style.display = 'none';
+  document.getElementById('lock-view').classList.add('active');
+  var digits = document.querySelectorAll('#admin-pin-inputs .pin-digit');
+  digits.forEach(function(d) { d.value = ''; d.classList.remove('filled','error'); });
+  digits[0].focus();
+  document.getElementById('admin-pin-error').textContent = '';
+  document.getElementById('admin-pin-submit').disabled = true;
+}
+
+function showAdminUI() {
+  document.getElementById('lock-view').classList.remove('active');
+  document.getElementById('admin-ui').style.display = 'block';
+  loadPINs();
+}
+
+// PIN input handling
+(function() {
+  var inputs = document.querySelectorAll('#admin-pin-inputs .pin-digit');
+  inputs.forEach(function(input, idx) {
+    input.addEventListener('input', function(e) {
+      var val = e.target.value.replace(/[^0-9]/g, '');
+      e.target.value = val;
+      if (val) { e.target.classList.add('filled'); e.target.classList.remove('error'); if(idx<inputs.length-1) inputs[idx+1].focus(); }
+      else { e.target.classList.remove('filled'); }
+      var pin=''; inputs.forEach(function(i){pin+=i.value;});
+      document.getElementById('admin-pin-submit').disabled = pin.length !== 4;
+    });
+    input.addEventListener('keydown', function(e) {
+      if(e.key==='Backspace'&&!e.target.value&&idx>0){ inputs[idx-1].focus(); inputs[idx-1].value=''; inputs[idx-1].classList.remove('filled'); }
+      if(e.key==='Enter') submitAdminPIN();
+    });
+  });
+})();
 
 async function loadPINs() {
   try {
     const res = await fetch(API + '/api/admin/pins');
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const pins = await res.json();
-    renderPINs(pins);
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    renderPINs(await res.json());
   } catch(e) {
-    document.getElementById('pin-list').innerHTML =
-      '<div class="empty-state">⚠️ 无法加载列表<br><small>' + e.message + '</small></div>';
+    document.getElementById('pin-list').innerHTML = '<div class="empty-state">⚠️ 无法加载</div>';
   }
 }
 
 function renderPINs(pins) {
   var list = document.getElementById('pin-list');
   var count = document.getElementById('pin-count');
-  var activeCount = pins.filter(function(p) { return p.is_active; }).length;
-  count.textContent = activeCount + ' 名有效医生';
-
-  if (!pins.length) {
-    list.innerHTML = '<div class="empty-state">暂无医生准入码<br><small>在上方创建第一个</small></div>';
-    return;
-  }
-
+  var activeCount = pins.filter(function(p){return p.is_active;}).length;
+  count.textContent = activeCount + ' 名有效';
+  if(!pins.length) { list.innerHTML = '<div class="empty-state">暂无医生准入码<br><small>在上方创建第一个</small></div>'; return; }
   list.innerHTML = pins.map(function(p) {
     var active = p.is_active;
-    return '<div class="pin-item' + (active ? '' : ' revoked') + '">' +
-      '<div class="pin-number">' + p.pin + '</div>' +
+    return '<div class="pin-item' + (active?'':' revoked') + '">' +
+      '<div class="pin-number">'+p.pin+'</div>' +
       '<div class="pin-info">' +
-        '<div class="pin-name">' + escapeHtml(p.doctor_name) + '</div>' +
-        '<div class="pin-meta">创建于 ' + formatDate(p.created_at) +
-          (p.revoked_at ? ' · 撤销于 ' + formatDate(p.revoked_at) : '') +
-        '</div>' +
+        '<div class="pin-name">'+esc(p.doctor_name)+'</div>' +
+        '<div class="pin-meta">'+formatDate(p.created_at)+(p.revoked_at?' · 撤销 '+formatDate(p.revoked_at):'')+'</div>' +
       '</div>' +
-      '<span class="pin-badge ' + (active ? 'active' : 'revoked') + '">' +
-        (active ? '有效' : '已撤销') +
-      '</span>' +
-      (active ? '<button class="revoke-btn" onclick="revokePIN(\'' + p.pin + '\',\'' + escapeJs(p.doctor_name) + '\')">撤销</button>' : '') +
+      '<span class="pin-badge '+(active?'active':'revoked')+'">'+(active?'有效':'已撤销')+'</span>' +
+      (active?'<button class="revoke-btn" onclick="revokePIN(\''+p.pin+'\',\''+escJs(p.doctor_name)+'\')">撤销</button>':'') +
     '</div>';
   }).join('');
 }
@@ -289,81 +283,40 @@ function renderPINs(pins) {
 async function createPIN() {
   var name = document.getElementById('doctor-name').value.trim();
   var pin = document.getElementById('custom-pin').value.trim();
-
-  if (!name) {
-    toast('请输入医生姓名');
-    return;
-  }
-
-  if (pin && (pin.length !== 4 || !/^\d+$/.test(pin))) {
-    toast('PIN 必须是 4 位数字');
-    return;
-  }
-
-  var body = { doctor_name: name };
-  if (pin) body.pin = pin;
-
+  if(!name){toast('请输入医生姓名');return;}
+  if(pin&&(pin.length!==4||!/^\d+$/.test(pin))){toast('PIN必须是4位数字');return;}
+  var body = {doctor_name:name};
+  if(pin) body.pin = pin;
   try {
-    const res = await fetch(API + '/api/admin/pins', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
-
-    // Show the new PIN
+    const res = await fetch(API+'/api/admin/pins',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var data = await res.json();
     document.getElementById('new-pin-value').textContent = data.pin;
     document.getElementById('pin-reveal').classList.add('show');
     document.getElementById('doctor-name').value = '';
     document.getElementById('custom-pin').value = '';
-
-    toast('✅ 准入码已创建');
-    loadPINs();
-  } catch(e) {
-    toast('创建失败: ' + e.message);
-  }
+    toast('✅ 准入码已创建'); loadPINs();
+  } catch(e) { toast('创建失败: '+e.message); }
 }
 
 async function revokePIN(pin, name) {
-  if (!confirm('确认撤销医生 ' + name + ' 的准入码 ' + pin + '？\n撤销后该医生将无法访问系统。')) return;
-
+  if(!confirm('确认撤销 '+name+' 的准入码 '+pin+'？\n撤销后该医生将无法访问。')) return;
   try {
-    const res = await fetch(API + '/api/admin/pins/' + pin, { method: 'DELETE' });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    toast('✅ 已撤销 ' + name + ' 的准入码');
-    loadPINs();
-  } catch(e) {
-    toast('撤销失败: ' + e.message);
-  }
+    const res = await fetch(API+'/api/admin/pins/'+pin,{method:'DELETE'});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    toast('✅ 已撤销 '+name); loadPINs();
+  } catch(e) { toast('撤销失败: '+e.message); }
 }
 
 function copyPIN() {
   var pin = document.getElementById('new-pin-value').textContent;
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(pin).then(function() {
-      toast('📋 已复制到剪贴板');
-    });
-  }
+  if(navigator.clipboard) navigator.clipboard.writeText(pin).then(function(){toast('📋 已复制');});
 }
 
-function escapeHtml(s) {
-  if (!s) return '';
-  var d = document.createElement('div');
-  d.textContent = s;
-  return d.innerHTML;
-}
-function escapeJs(s) { return (s||'').replace(/'/g,"\\'").replace(/\\/g,'\\\\'); }
+function esc(s){if(!s)return '';var d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+function escJs(s){return(s||'').replace(/'/g,"\\'").replace(/\\/g,'\\\\');}
 
-// Enter key
-document.getElementById('doctor-name').addEventListener('keydown', function(e) {
-  if (e.key === 'Enter') createPIN();
-});
-document.getElementById('custom-pin').addEventListener('keydown', function(e) {
-  if (e.key === 'Enter') createPIN();
-});
-
-loadPINs();
+if(isAdminAuthed){showAdminUI();}
 </script>
 </body>
 </html>
