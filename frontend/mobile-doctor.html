@@ -435,18 +435,16 @@ body {
 const API = window.location.origin;
 let pollTimer = null;
 let currentSessionId = null;
-// ── Storage helper: Cookie only (most reliable in WeChat browser) ─
+// ── Storage helper: sessionStorage (same as admin page) ──
 var Storage = {
   get: function(key) {
-    var m = document.cookie.match(new RegExp('(^| )' + key + '=([^;]+)'));
-    return m ? decodeURIComponent(m[2]) : '';
+    try { return sessionStorage.getItem(key) || ''; } catch(e) { return ''; }
   },
   set: function(key, val) {
-    // Cookie: 30 days, path=/, no SameSite restriction for WeChat compatibility
-    document.cookie = key + '=' + encodeURIComponent(val) + '; max-age=' + (30*24*60*60) + '; path=/';
+    try { sessionStorage.setItem(key, val); } catch(e) {}
   },
   remove: function(key) {
-    document.cookie = key + '=; max-age=0; path=/';
+    try { sessionStorage.removeItem(key); } catch(e) {}
   }
 };
 
@@ -460,7 +458,7 @@ console.log('[C-SSRS] PIN:', doctorPIN ? '***' + doctorPIN.slice(-2) : '(empty)'
 // Show storage status on page
 var debugEl = document.getElementById('storage-debug');
 if (debugEl) {
-  debugEl.textContent = '📦 存储状态: ' + (doctorPIN ? '已记住 (' + doctorPIN.slice(-2) + ')' : '未记住') + ' | Cookie: ' + (document.cookie ? '有' : '无');
+  debugEl.textContent = '📦 存储状态: ' + (doctorPIN ? '已记住 (' + doctorPIN.slice(-2) + ')' : '未记住');
 }
 
 // ── Auth headers helper ──
