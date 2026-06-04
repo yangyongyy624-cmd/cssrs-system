@@ -851,25 +851,9 @@ function escapeJs(s) { return (s||'').replace(/'/g,"\\'").replace(/\\/g,'\\\\');
 
 // ── Init ──
 if (doctorPIN) {
-  // Verify existing PIN
-  fetch(API + '/api/auth/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ pin: doctorPIN }),
-  })
-  .then(function(res) {
-    if (!res.ok) throw new Error('invalid');
-    return res.json();
-  })
-  .then(function(data) {
-    doctorName = data.doctor_name;
-    Storage.set('cssrs_doctor_name', doctorName);
-    loadDoctorPins();
-    enterApp();
-  })
-  .catch(function() {
-    showPINView('您的准入码已失效，请重新验证');
-  });
+  // Trust stored PIN (same as admin page). authFetch will catch 401/403 on API calls.
+  loadDoctorPins();
+  enterApp();
 } else {
   showPINView();
 }
