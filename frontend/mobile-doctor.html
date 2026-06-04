@@ -183,7 +183,7 @@ body {
 /* ── FAB ── */
 .fab {
   position: fixed;
-  bottom: max(24px, env(safe-area-inset-bottom));
+  bottom: 96px;
   right: 20px;
   width: 56px;
   height: 56px;
@@ -302,7 +302,7 @@ body {
 .empty-state p { font-size: 14px; }
 
 /* ── Toast ── */
-.toast { position: fixed; bottom: max(80px, env(safe-area-inset-bottom)); left: 20px; right: 20px; background: #1E293B; color: white; padding: 14px 20px; border-radius: 12px; font-size: 14px; text-align: center; z-index: 200; transform: translateY(120%); transition: transform 0.3s ease; }
+.toast { position: fixed; bottom: max(64px, calc(env(safe-area-inset-bottom) + 32px)); left: 20px; right: 20px; background: #1E293B; color: white; padding: 14px 20px; border-radius: 12px; font-size: 14px; text-align: center; z-index: 200; transform: translateY(120%); transition: transform 0.3s ease; }
 .toast.show { transform: translateY(0); }
 
 /* ── Loading overlay ── */
