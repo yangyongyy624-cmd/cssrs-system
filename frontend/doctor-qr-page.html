@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>C-SSRS 医生入口</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+  }
+  .print-card {
+    text-align: center;
+    padding: 40px;
+    max-width: 400px;
+  }
+  .print-card h1 {
+    font-size: 22px;
+    font-weight: 700;
+    color: #2563EB;
+    margin-bottom: 8px;
+  }
+  .print-card .subtitle {
+    font-size: 14px;
+    color: #64748B;
+    margin-bottom: 24px;
+  }
+  .print-card img {
+    width: 280px;
+    height: 280px;
+    border: 2px solid #E2E8F0;
+    border-radius: 12px;
+    padding: 12px;
+    background: white;
+  }
+  .print-card .hint {
+    font-size: 14px;
+    color: #64748B;
+    margin-top: 20px;
+    line-height: 1.8;
+  }
+  .print-card .url {
+    font-size: 12px;
+    color: #94A3B8;
+    font-family: "SF Mono", monospace;
+    margin-top: 8px;
+    word-break: break-all;
+  }
+  .print-card .footer {
+    font-size: 11px;
+    color: #CBD5E1;
+    margin-top: 24px;
+  }
+  /* Hide on print */
+  @media print {
+    body { background: white; }
+    .print-card { padding: 20px; }
+  }
+</style>
+</head>
+<body>
+<div class="print-card">
+  <h1>C-SSRS 医生端入口</h1>
+  <p class="subtitle">哥伦比亚自杀严重程度评定量表</p>
+  <img src="doctor-qr-mobile.png" alt="医生端入口二维码">
+  <div class="hint">
+    打开手机系统相机扫描，即可进入医生端
+  </div>
+  <div class="url">http://82.156.238.242:8888/mobile</div>
+  <div class="footer">Columbia Suicide Severity Rating Scale · 电子评估系统</div>
+</div>
+</body>
+</html>

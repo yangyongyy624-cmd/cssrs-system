@@ -283,6 +283,22 @@ def serve_mobile_doctor():
     raise HTTPException(status_code=404, detail="mobile-doctor.html not found")
 
 
+@app.get("/doctor-qr")
+def serve_doctor_qr_page():
+    qr_html = frontend_dir / "doctor-qr-page.html"
+    if qr_html.exists():
+        return FileResponse(str(qr_html), headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+    raise HTTPException(status_code=404, detail="doctor-qr-page.html not found")
+
+
+@app.get("/doctor-qr.png")
+def serve_doctor_qr_image():
+    qr_png = frontend_dir / "doctor-qr-mobile.png"
+    if qr_png.exists():
+        return FileResponse(str(qr_png), headers={"Cache-Control": "public, max-age=31536000"})
+    raise HTTPException(status_code=404, detail="doctor-qr-mobile.png not found")
+
+
 @app.get("/api/qr-link/{session_id}")
 def generate_patient_link(session_id: str):
     """Generate a direct patient URL for a session (for QR code)"""
