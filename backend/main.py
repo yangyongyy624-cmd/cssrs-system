@@ -357,6 +357,14 @@ def serve_mobile_doctor():
     raise HTTPException(status_code=404, detail="mobile-doctor.html not found")
 
 
+@app.get("/admin")
+def serve_admin_page():
+    admin_html = frontend_dir / "admin.html"
+    if admin_html.exists():
+        return FileResponse(str(admin_html), headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+    raise HTTPException(status_code=404, detail="admin.html not found")
+
+
 @app.get("/doctor-qr")
 def serve_doctor_qr_page():
     qr_html = frontend_dir / "doctor-qr-page.html"
