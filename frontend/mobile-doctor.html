@@ -348,6 +348,7 @@ body {
   <div class="pin-help">
     准入码由系统管理员分配<br>
     如遗忘或无法访问，请联系管理员重新生成
+    <div id="storage-debug" style="margin-top:8px; font-size:11px; color:#94a3b8;"></div>
   </div>
 </div>
 
@@ -434,28 +435,33 @@ body {
 const API = window.location.origin;
 let pollTimer = null;
 let currentSessionId = null;
-// ── Storage helper: localStorage with cookie fallback (WeChat browser doesn't persist localStorage well) ──
+// ── Storage helper: Cookie only (most reliable in WeChat browser) ─
 var Storage = {
   get: function(key) {
-    try { return localStorage.getItem(key) || ''; } catch(e) {}
-    // Fallback to cookie
     var m = document.cookie.match(new RegExp('(^| )' + key + '=([^;]+)'));
     return m ? decodeURIComponent(m[2]) : '';
   },
   set: function(key, val) {
-    try { localStorage.setItem(key, val); } catch(e) {}
-    // Also set cookie (30 days expiry)
-    document.cookie = key + '=' + encodeURIComponent(val) + '; max-age=' + (30*24*60*60) + '; path=/; SameSite=Lax';
+    // Cookie: 30 days, path=/, no SameSite restriction for WeChat compatibility
+    document.cookie = key + '=' + encodeURIComponent(val) + '; max-age=' + (30*24*60*60) + '; path=/';
   },
   remove: function(key) {
-    try { localStorage.removeItem(key); } catch(e) {}
-    document.cookie = key + '=; max-age=0; path=/; SameSite=Lax';
+    document.cookie = key + '=; max-age=0; path=/';
   }
 };
 
 let doctorPIN = Storage.get('cssrs_doctor_pin') || '';
 let doctorName = Storage.get('cssrs_doctor_name') || '';
 let pinMap = {}; // PIN -> doctor name mapping
+
+// Debug
+console.log('[C-SSRS] PIN:', doctorPIN ? '***' + doctorPIN.slice(-2) : '(empty)', 'Name:', doctorName || '(empty)');
+
+// Show storage status on page
+var debugEl = document.getElementById('storage-debug');
+if (debugEl) {
+  debugEl.textContent = '📦 存储状态: ' + (doctorPIN ? '已记住 (' + doctorPIN.slice(-2) + ')' : '未记住') + ' | Cookie: ' + (document.cookie ? '有' : '无');
+}
 
 // ── Auth headers helper ──
 function authHeaders() {
