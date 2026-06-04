@@ -650,19 +650,18 @@ function renderCards(data) {
     var riskClass = 'r-' + (a.risk_level || 'none');
     var riskLabel = getRiskLabel(a.risk_level);
     var dateStr = formatDate(a.assessment_date);
-    var doctorStr = (a.doctor_pin && pinMap[a.doctor_pin]) ? ' · 👨‍⚕️ ' + escapeHtml(pinMap[a.doctor_pin]) : '';
     return '<div class="card" onclick="showReport(\'' + escapeJs(a.session_id) + '\')">' +
       '<div class="card-header">' +
         '<div>' +
           '<div class="card-patient">' + escapeHtml(a.patient_id) + '</div>' +
           (a.patient_phone ? '<div class="card-phone">' + escapeHtml(a.patient_phone) + '</div>' : '') +
+          (a.doctor_pin && pinMap[a.doctor_pin] ? '<div class="card-doctor">👨‍⚕️ ' + escapeHtml(pinMap[a.doctor_pin]) + '</div>' : '') +
         '</div>' +
         '<span class="risk-badge ' + riskClass + '"><span class="dot"></span>' + riskLabel + '</span>' +
       '</div>' +
       '<div class="card-date">' + dateStr +
         ' · 严重度 ' + (a.severity_score || '-') +
         ' · 强度 ' + (a.intensity_total != null ? a.intensity_total : '-') +
-        doctorStr +
       '</div>' +
     '</div>';
   }).join('');
