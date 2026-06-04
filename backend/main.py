@@ -18,10 +18,11 @@ LOCAL_PORT = 8000
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, Response
+from pydantic import BaseModel
 
 import qrcode
 import io
@@ -34,6 +35,7 @@ from database import (
     init_db, save_assessment, get_assessment, list_assessments, get_patient_history,
     create_session, get_session, resolve_access_code, search_by_phone,
 )
+from database import init_doctor_pins_table, verify_doctor_pin, create_doctor_pin, revoke_doctor_pin, list_doctor_pins
 
 app = FastAPI(title="C-SSRS Electronic Assessment System")
 
@@ -55,10 +57,12 @@ if frontend_dir.exists():
 @app.on_event("startup")
 def startup():
     init_db()
+    init_doctor_pins_table()
 
 
 # Also init on import (for testing and direct script usage)
 init_db()
+init_doctor_pins_table()
 
 
 # ── Page routes ──
@@ -198,14 +202,84 @@ def submit_assessment(session_id: str, req: AssessRequest):
     return AssessmentResponse(**result_dict)
 
 
+# ── Doctor PIN authentication ──
+
+class DoctorPINAuth(BaseModel):
+    pin: str
+
+class DoctorPINCreate(BaseModel):
+    doctor_name: str
+    pin: str = ""
+
+class DoctorPINRevoke(BaseModel):
+    pin: str
+
+
+def require_pin(request: Request) -> Optional[dict]:
+    """Extract and verify doctor PIN from X-Doctor-PIN header.
+    Returns doctor info dict, or raises 401/403."""
+    pin = request.headers.get("X-Doctor-PIN", "").strip()
+    if not pin:
+        raise HTTPException(401, "需要医生准入码")
+    result = verify_doctor_pin(pin)
+    if result is None:
+        raise HTTPException(401, "准入码无效")
+    if result.get("error") == "revoked":
+        raise HTTPException(403, f"准入码已撤销（医生：{result['doctor_name']}）")
+    return result
+
+
+@app.post("/api/auth/login")
+def doctor_login(req: DoctorPINAuth):
+    """Doctor PIN authentication. Returns doctor info on success."""
+    result = verify_doctor_pin(req.pin)
+    if result is None:
+        raise HTTPException(401, "准入码无效，请确认后重试")
+    if result.get("error") == "revoked":
+        raise HTTPException(403, f"您的准入码已被撤销（医生：{result['doctor_name']}）")
+    return {
+        "ok": True,
+        "doctor_name": result["doctor_name"],
+        "pin": req.pin,
+        "created_at": result.get("created_at"),
+    }
+
+
+# Doctor PIN management (admin — requires PIN for now, could be upgraded)
+@app.post("/api/admin/pins")
+def admin_create_pin(req: DoctorPINCreate):
+    """Create a new doctor PIN. Returns the PIN and doctor name."""
+    p = req.pin if req.pin else None
+    result = create_doctor_pin(req.doctor_name, p)
+    if "error" in result:
+        raise HTTPException(400, result["error"])
+    return result
+
+
+@app.delete("/api/admin/pins/{pin}")
+def admin_revoke_pin(pin: str):
+    """Revoke a doctor PIN."""
+    if not revoke_doctor_pin(pin):
+        raise HTTPException(404, "PIN not found")
+    return {"ok": True, "revoked": pin}
+
+
+@app.get("/api/admin/pins")
+def admin_list_pins():
+    """List all doctor PINs and their status."""
+    return list_doctor_pins()
+
+
 @app.get("/api/report")
-def list_reports():
+def list_reports(request: Request):
+    doctor = require_pin(request)
     rows = list_assessments()
     return rows
 
 
 @app.get("/api/report/{session_id}")
-def get_report(session_id: str):
+def get_report(session_id: str, request: Request):
+    doctor = require_pin(request)
     row = get_assessment(session_id)
     if row is None:
         raise HTTPException(status_code=404, detail="Assessment not found")

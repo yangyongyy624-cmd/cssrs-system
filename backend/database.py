@@ -12,6 +12,9 @@ DB_PATH = Path(__file__).parent / "cssrs.db"
 CODE_CHARS = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"
 CODE_LEN = 6
 
+# Doctor PIN: 4 digits
+PIN_LEN = 4
+
 
 def generate_access_code() -> str:
     return "".join(random.choices(CODE_CHARS, k=CODE_LEN))
@@ -226,3 +229,78 @@ def _row_to_dict(row: sqlite3.Row) -> dict:
         if d.get(field):
             d[field] = [x.strip() for x in d[field].split(",") if x.strip()]
     return d
+
+
+# ── Doctor PIN management ──
+
+def init_doctor_pins_table():
+    """Create cssrs_doctor_pins table if not exists."""
+    conn = get_db()
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS cssrs_doctor_pins (
+            pin TEXT PRIMARY KEY,
+            doctor_name TEXT NOT NULL,
+            is_active INTEGER NOT NULL DEFAULT 1,
+            created_at TEXT DEFAULT (datetime('now')),
+            revoked_at TEXT
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+
+def verify_doctor_pin(pin: str) -> Optional[dict]:
+    """Check if PIN is valid and active. Returns doctor info or None."""
+    conn = get_db()
+    row = conn.execute(
+        "SELECT pin, doctor_name, is_active, created_at FROM cssrs_doctor_pins WHERE pin = ?",
+        (pin,),
+    ).fetchone()
+    conn.close()
+    if row is None:
+        return None
+    d = dict(row)
+    if not d["is_active"]:
+        return {"error": "revoked", "doctor_name": d["doctor_name"]}
+    return d
+
+
+def create_doctor_pin(doctor_name: str, pin: Optional[str] = None) -> dict:
+    """Create a new doctor PIN. Auto-generates 4-digit PIN if not provided."""
+    if pin is None:
+        pin = "".join(random.choices("0123456789", k=PIN_LEN))
+    conn = get_db()
+    try:
+        conn.execute(
+            "INSERT INTO cssrs_doctor_pins (pin, doctor_name) VALUES (?, ?)",
+            (pin, doctor_name),
+        )
+        conn.commit()
+        return {"pin": pin, "doctor_name": doctor_name, "is_active": True}
+    except sqlite3.IntegrityError:
+        return {"error": "PIN already exists"}
+    finally:
+        conn.close()
+
+
+def revoke_doctor_pin(pin: str) -> bool:
+    """Revoke a doctor PIN. Returns True if found and revoked."""
+    conn = get_db()
+    cursor = conn.execute(
+        "UPDATE cssrs_doctor_pins SET is_active = 0, revoked_at = datetime('now') WHERE pin = ?",
+        (pin,),
+    )
+    conn.commit()
+    changed = cursor.rowcount > 0
+    conn.close()
+    return changed
+
+
+def list_doctor_pins() -> list[dict]:
+    """List all doctor PINs with their status."""
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT pin, doctor_name, is_active, created_at, revoked_at FROM cssrs_doctor_pins ORDER BY created_at DESC"
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]

@@ -21,6 +21,7 @@
   --border: #E2E8F0;
   --text: #1E293B;
   --text-secondary: #64748B;
+  --danger: #EF4444;
   --risk-none: #22C55E;
   --risk-low: #EAB308;
   --risk-medium: #FFA500;
@@ -86,6 +87,99 @@ body {
 .view { display: none; padding: 16px 20px 100px; }
 .view.active { display: block; }
 
+/* ── PIN Login View ── */
+.pin-view {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 40px 20px;
+}
+.pin-view.active { display: flex; }
+.pin-lock-icon {
+  font-size: 56px;
+  margin-bottom: 16px;
+}
+.pin-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.pin-subtitle {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 32px;
+  text-align: center;
+}
+.pin-inputs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+.pin-digit {
+  width: 52px;
+  height: 64px;
+  text-align: center;
+  font-size: 28px;
+  font-weight: 700;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  outline: none;
+  transition: border-color 0.15s;
+  font-family: "SF Mono", "Menlo", monospace;
+}
+.pin-digit:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+}
+.pin-digit.filled {
+  border-color: var(--primary);
+  background: #EFF6FF;
+}
+.pin-digit.error {
+  border-color: var(--danger);
+  background: #FEF2F2;
+  animation: shake 0.4s ease;
+}
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+.pin-error {
+  color: var(--danger);
+  font-size: 14px;
+  min-height: 20px;
+  margin-bottom: 12px;
+  text-align: center;
+}
+.pin-btn {
+  width: 100%;
+  max-width: 240px;
+  padding: 14px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+.pin-btn:active { background: var(--primary-dark); transform: scale(0.98); }
+.pin-btn:disabled { background: #CBD5E1; cursor: not-allowed; }
+.pin-help {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 24px;
+  text-align: center;
+  line-height: 1.6;
+}
+
 /* ── FAB ── */
 .fab {
   position: fixed;
@@ -125,382 +219,135 @@ body {
   align-items: flex-start;
   margin-bottom: 8px;
 }
-.card-patient {
-  font-size: 16px;
-  font-weight: 600;
-}
-.card-phone {
-  font-size: 13px;
-  color: var(--text-secondary);
-  font-family: "SF Mono", monospace;
-}
-.card-date {
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin-top: 4px;
-}
+.card-patient { font-size: 16px; font-weight: 600; }
+.card-phone { font-size: 13px; color: var(--text-secondary); font-family: "SF Mono", monospace; }
+.card-date { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
 
 /* ── Risk badge ── */
 .risk-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 600;
-  white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 10px; border-radius: 12px;
+  font-size: 12px; font-weight: 600; white-space: nowrap;
 }
 .risk-badge .dot { width: 6px; height: 6px; border-radius: 50%; }
-.r-none { background:#F0FDF4; color:#15803D; }
-.r-none .dot { background:var(--risk-none); }
-.r-low { background:#FEFCE8; color:#A16207; }
-.r-low .dot { background:var(--risk-low); }
-.r-medium { background:#FFF7ED; color:#C2410C; }
-.r-medium .dot { background:var(--risk-medium); }
-.r-high { background:#FEF2F2; color:#DC2626; }
-.r-high .dot { background:var(--risk-high); }
-.r-critical { background:#FEE2E2; color:#991B1B; }
-.r-critical .dot { background:var(--risk-critical); }
+.r-none { background:#F0FDF4; color:#15803D; } .r-none .dot { background:var(--risk-none); }
+.r-low { background:#FEFCE8; color:#A16207; } .r-low .dot { background:var(--risk-low); }
+.r-medium { background:#FFF7ED; color:#C2410C; } .r-medium .dot { background:var(--risk-medium); }
+.r-high { background:#FEF2F2; color:#DC2626; } .r-high .dot { background:var(--risk-high); }
+.r-critical { background:#FEE2E2; color:#991B1B; } .r-critical .dot { background:var(--risk-critical); }
 
 /* ── Stats bar ── */
-.stats-bar {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 16px;
-  font-size: 13px;
-  color: var(--text-secondary);
-}
+.stats-bar { display: flex; gap: 12px; margin-bottom: 16px; font-size: 13px; color: var(--text-secondary); }
 .stats-bar strong { color: var(--text); font-weight: 700; }
 
 /* ── Create form ── */
-.create-card {
-  background: var(--card);
-  border-radius: var(--radius);
-  padding: 24px 20px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-}
-.create-card h2 {
-  font-size: 20px;
-  font-weight: 700;
-  margin-bottom: 4px;
-}
-.create-card .subtitle {
-  font-size: 13px;
-  color: var(--text-secondary);
-  margin-bottom: 24px;
-}
+.create-card { background: var(--card); border-radius: var(--radius); padding: 24px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+.create-card h2 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+.create-card .subtitle { font-size: 13px; color: var(--text-secondary); margin-bottom: 24px; }
 .form-group { margin-bottom: 16px; }
-.form-group label {
-  display: block;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text);
-  margin-bottom: 6px;
-}
-.form-group input {
-  width: 100%;
-  padding: 14px 16px;
-  border: 1.5px solid var(--border);
-  border-radius: 12px;
-  font-size: 16px;
-  font-family: inherit;
-  background: var(--bg);
-  transition: border-color 0.15s;
-}
-.form-group input:focus {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
-  background: white;
-}
-.form-group .hint {
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin-top: 4px;
-}
-.btn-row {
-  display: flex;
-  gap: 12px;
-  margin-top: 24px;
-}
-.btn {
-  flex: 1;
-  padding: 14px;
-  border: none;
-  border-radius: 12px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: inherit;
-  transition: all 0.15s;
-}
+.form-group label { display: block; font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+.form-group input { width: 100%; padding: 14px 16px; border: 1.5px solid var(--border); border-radius: 12px; font-size: 16px; font-family: inherit; background: var(--bg); transition: border-color 0.15s; }
+.form-group input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); background: white; }
+.form-group .hint { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+.btn-row { display: flex; gap: 12px; margin-top: 24px; }
+.btn { flex: 1; padding: 14px; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.15s; }
 .btn:active { transform: scale(0.98); }
 .btn-primary { background: var(--primary); color: white; }
 .btn-primary:active { background: var(--primary-dark); }
 .btn-secondary { background: var(--bg); color: var(--text); border: 1.5px solid var(--border); }
 
 /* ── QR view ── */
-.qr-view {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding-top: 20px;
-}
-.qr-patient-info {
-  text-align: center;
-  margin-bottom: 24px;
-}
-.qr-patient-name {
-  font-size: 20px;
-  font-weight: 700;
-}
-.qr-patient-phone {
-  font-size: 14px;
-  color: var(--text-secondary);
-  font-family: "SF Mono", monospace;
-  margin-top: 4px;
-}
-.qr-frame {
-  background: white;
-  padding: 16px;
-  border-radius: 20px;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.1);
-  border: 2px dashed var(--primary);
-  margin-bottom: 24px;
-}
-.qr-frame img {
-  width: 240px;
-  height: 240px;
-  display: block;
-}
-.qr-instruction {
-  text-align: center;
-  margin-bottom: 32px;
-}
-.qr-instruction h3 {
-  font-size: 18px;
-  font-weight: 700;
-  margin-bottom: 8px;
-}
-.qr-instruction p {
-  font-size: 14px;
-  color: var(--text-secondary);
-  line-height: 1.6;
-}
-.qr-instruction .steps {
-  display: flex;
-  gap: 16px;
-  justify-content: center;
-  margin-top: 16px;
-}
-.qr-instruction .step {
-  text-align: center;
-  flex: 0 1 100px;
-}
-.qr-instruction .step-icon {
-  width: 40px;
-  height: 40px;
-  background: var(--bg);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 8px;
-  font-size: 18px;
-}
-.qr-instruction .step-text {
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-/* ── Polling status ── */
-.poll-status {
-  text-align: center;
-  padding: 20px;
-}
-.poll-spinner {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  color: var(--text-secondary);
-  margin-bottom: 16px;
-}
-.poll-spinner .dot {
-  width: 8px;
-  height: 8px;
-  background: var(--primary);
-  border-radius: 50%;
-  animation: pulse 1.2s ease-in-out infinite;
-}
-@keyframes pulse {
-  0%, 100% { opacity: 0.3; transform: scale(0.8); }
-  50% { opacity: 1; transform: scale(1.2); }
-}
-
-/* ── Code display (fallback) ── */
-.code-display {
-  text-align: center;
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border);
-}
-.code-display .label {
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin-bottom: 8px;
-}
-.code-display .code {
-  font-size: 32px;
-  font-weight: 800;
-  letter-spacing: 6px;
-  color: var(--primary);
-  font-family: "SF Mono", "Menlo", monospace;
-  background: #EFF6FF;
-  padding: 8px 24px;
-  border-radius: 12px;
-  display: inline-block;
-}
-.code-display .hint {
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin-top: 8px;
-}
+.qr-view { display: flex; flex-direction: column; align-items: center; padding-top: 20px; }
+.qr-patient-info { text-align: center; margin-bottom: 24px; }
+.qr-patient-name { font-size: 20px; font-weight: 700; }
+.qr-patient-phone { font-size: 14px; color: var(--text-secondary); font-family: "SF Mono", monospace; margin-top: 4px; }
+.qr-frame { background: white; padding: 16px; border-radius: 20px; box-shadow: 0 4px 24px rgba(0,0,0,0.1); border: 2px dashed var(--primary); margin-bottom: 24px; }
+.qr-frame img { width: 240px; height: 240px; display: block; }
+.qr-instruction { text-align: center; margin-bottom: 32px; }
+.qr-instruction h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+.qr-instruction p { font-size: 14px; color: var(--text-secondary); line-height: 1.6; }
+.qr-instruction .steps { display: flex; gap: 16px; justify-content: center; margin-top: 16px; }
+.qr-instruction .step { text-align: center; flex: 0 1 100px; }
+.qr-instruction .step-icon { width: 40px; height: 40px; background: var(--bg); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; font-size: 18px; }
+.qr-instruction .step-text { font-size: 12px; color: var(--text-secondary); }
+.poll-status { text-align: center; padding: 20px; }
+.poll-spinner { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text-secondary); margin-bottom: 16px; }
+.poll-spinner .dot { width: 8px; height: 8px; background: var(--primary); border-radius: 50%; animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:0.3;transform:scale(0.8)} 50%{opacity:1;transform:scale(1.2)} }
+.code-display { text-align: center; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+.code-display .label { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; }
+.code-display .code { font-size: 32px; font-weight: 800; letter-spacing: 6px; color: var(--primary); font-family: "SF Mono","Menlo",monospace; background: #EFF6FF; padding: 8px 24px; border-radius: 12px; display: inline-block; }
+.code-display .hint { font-size: 12px; color: var(--text-secondary); margin-top: 8px; }
 
 /* ── Report view ── */
-.report-risk-card {
-  padding: 20px;
-  border-radius: var(--radius);
-  text-align: center;
-  margin-bottom: 16px;
-}
-.report-risk-card .risk-text {
-  font-size: 28px;
-  font-weight: 800;
-  color: white;
-}
-.report-risk-card .risk-sub {
-  font-size: 13px;
-  color: rgba(255,255,255,0.8);
-  margin-top: 4px;
-}
-.report-section {
-  background: var(--card);
-  border-radius: var(--radius);
-  padding: 16px;
-  margin-bottom: 12px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-}
-.report-section h3 {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  margin-bottom: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-.score-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border);
-}
+.report-risk-card { padding: 20px; border-radius: var(--radius); text-align: center; margin-bottom: 16px; }
+.report-risk-card .risk-text { font-size: 28px; font-weight: 800; color: white; }
+.report-risk-card .risk-sub { font-size: 13px; color: rgba(255,255,255,0.8); margin-top: 4px; }
+.report-section { background: var(--card); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+.report-section h3 { font-size: 14px; font-weight: 600; color: var(--text-secondary); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+.score-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
 .score-row:last-child { border-bottom: none; }
 .score-label { font-size: 14px; color: var(--text-secondary); }
 .score-value { font-size: 16px; font-weight: 700; }
-.answer-row {
-  display: flex;
-  gap: 8px;
-  padding: 8px 0;
-  font-size: 14px;
-}
+.answer-row { display: flex; gap: 8px; padding: 8px 0; font-size: 14px; }
 .answer-label { color: var(--text-secondary); min-width: 70px; }
 .answer-value { flex: 1; }
 .action-list { list-style: none; }
-.action-list li {
-  padding: 10px 12px;
-  margin-bottom: 6px;
-  background: #FEF2F2;
-  border-left: 3px solid #EF4444;
-  border-radius: 0 8px 8px 0;
-  font-size: 14px;
-  color: #991B1B;
-}
-.action-list li.safe {
-  background: #F0FDF4;
-  border-left-color: var(--risk-none);
-  color: #15803D;
-}
+.action-list li { padding: 10px 12px; margin-bottom: 6px; background: #FEF2F2; border-left: 3px solid #EF4444; border-radius: 0 8px 8px 0; font-size: 14px; color: #991B1B; }
+.action-list li.safe { background: #F0FDF4; border-left-color: var(--risk-none); color: #15803D; }
 
 /* ── Empty state ── */
-.empty-state {
-  text-align: center;
-  padding: 60px 20px;
-  color: var(--text-secondary);
-}
+.empty-state { text-align: center; padding: 60px 20px; color: var(--text-secondary); }
 .empty-state .icon { font-size: 48px; margin-bottom: 12px; opacity: 0.4; }
 .empty-state p { font-size: 14px; }
 
 /* ── Toast ── */
-.toast {
-  position: fixed;
-  bottom: max(80px, env(safe-area-inset-bottom));
-  left: 20px;
-  right: 20px;
-  background: #1E293B;
-  color: white;
-  padding: 14px 20px;
-  border-radius: 12px;
-  font-size: 14px;
-  text-align: center;
-  z-index: 200;
-  transform: translateY(120%);
-  transition: transform 0.3s ease;
-}
+.toast { position: fixed; bottom: max(80px, env(safe-area-inset-bottom)); left: 20px; right: 20px; background: #1E293B; color: white; padding: 14px 20px; border-radius: 12px; font-size: 14px; text-align: center; z-index: 200; transform: translateY(120%); transition: transform 0.3s ease; }
 .toast.show { transform: translateY(0); }
 
 /* ── Loading overlay ── */
-.loading-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(255,255,255,0.9);
-  z-index: 300;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  visibility: hidden;
-  transition: all 0.2s;
-}
+.loading-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.9); z-index: 300; display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: all 0.2s; }
 .loading-overlay.show { opacity: 1; visibility: visible; }
-.loading-overlay .spinner {
-  width: 36px;
-  height: 36px;
-  border: 3px solid var(--border);
-  border-top-color: var(--primary);
-  border-radius: 50%;
-  animation: spin 0.6s linear infinite;
-  margin-bottom: 12px;
-}
+.loading-overlay .spinner { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.6s linear infinite; margin-bottom: 12px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
 
-<!-- Header -->
-<div class="header">
+<!-- Header (hidden on PIN view) -->
+<div class="header" id="app-header" style="display:none;">
   <div class="header-title">
     <div class="logo">C</div>
-    C-SSRS 医生端
+    <span id="header-title-text">C-SSRS 医生端</span>
   </div>
   <button class="header-btn" id="header-back" style="display:none;" onclick="goBack()">← 返回</button>
 </div>
 
+<!-- View 0: PIN Login -->
+<div class="pin-view active" id="view-pin">
+  <div class="pin-lock-icon">🔐</div>
+  <div class="pin-title">医生准入验证</div>
+  <div class="pin-subtitle">请输入您的4位准入码</div>
+
+  <div class="pin-inputs" id="pin-inputs">
+    <input class="pin-digit" maxlength="1" data-idx="0" autocomplete="off" inputmode="numeric" pattern="[0-9]">
+    <input class="pin-digit" maxlength="1" data-idx="1" autocomplete="off" inputmode="numeric" pattern="[0-9]">
+    <input class="pin-digit" maxlength="1" data-idx="2" autocomplete="off" inputmode="numeric" pattern="[0-9]">
+    <input class="pin-digit" maxlength="1" data-idx="3" autocomplete="off" inputmode="numeric" pattern="[0-9]">
+  </div>
+
+  <div class="pin-error" id="pin-error"></div>
+
+  <button class="pin-btn" id="pin-submit" disabled onclick="submitPIN()">验证进入</button>
+
+  <div class="pin-help">
+    准入码由系统管理员分配<br>
+    如遗忘或无法访问，请联系管理员重新生成
+  </div>
+</div>
+
 <!-- View 1: List -->
-<div class="view active" id="view-list">
+<div class="view" id="view-list">
   <div class="stats-bar" id="stats-bar"></div>
   <div id="cards-container"></div>
   <div class="empty-state" id="empty-state" style="display:none;">
@@ -538,36 +385,23 @@ body {
       <div class="qr-patient-name" id="qr-patient-name"></div>
       <div class="qr-patient-phone" id="qr-patient-phone"></div>
     </div>
-
     <div class="qr-frame">
       <img id="qr-image" src="" alt="QR Code">
     </div>
-
     <div class="qr-instruction">
       <h3>请患者扫码开始评估</h3>
       <p>患者用手机系统相机扫描二维码</p>
       <div class="steps">
-        <div class="step">
-          <div class="step-icon">📷</div>
-          <div class="step-text">打开系统相机</div>
-        </div>
-        <div class="step">
-          <div class="step-icon">📱</div>
-          <div class="step-text">对准二维码</div>
-        </div>
-        <div class="step">
-          <div class="step-icon">✅</div>
-          <div class="step-text">点击弹出链接</div>
-        </div>
+        <div class="step"><div class="step-icon">📷</div><div class="step-text">打开系统相机</div></div>
+        <div class="step"><div class="step-icon">📱</div><div class="step-text">对准二维码</div></div>
+        <div class="step"><div class="step-icon">✅</div><div class="step-text">点击弹出链接</div></div>
       </div>
     </div>
-
     <div class="code-display">
       <div class="label">如果扫码失败，患者也可手动输入访问码</div>
       <div class="code" id="access-code-display"></div>
       <div class="hint">手机浏览器访问 <span id="code-url"></span> 输入上方6位码</div>
     </div>
-
     <div class="poll-status" id="poll-status">
       <div class="poll-spinner"><div class="dot"></div>等待患者完成答题...</div>
     </div>
@@ -580,7 +414,7 @@ body {
 </div>
 
 <!-- FAB -->
-<button class="fab" id="fab" onclick="showView('create')">+</button>
+<button class="fab" id="fab" style="display:none;" onclick="showView('create')">+</button>
 
 <!-- Toast -->
 <div class="toast" id="toast"></div>
@@ -595,14 +429,144 @@ body {
 const API = window.location.origin;
 let pollTimer = null;
 let currentSessionId = null;
+let doctorPIN = sessionStorage.getItem('cssrs_doctor_pin') || '';
+let doctorName = sessionStorage.getItem('cssrs_doctor_name') || '';
+
+// ── Auth headers helper ──
+function authHeaders() {
+  var h = { 'Content-Type': 'application/json' };
+  if (doctorPIN) h['X-Doctor-PIN'] = doctorPIN;
+  return h;
+}
+
+function authFetch(url, opts) {
+  opts = opts || {};
+  opts.headers = Object.assign(authHeaders(), opts.headers || {});
+  return fetch(url, opts).then(function(res) {
+    if (res.status === 401 || res.status === 403) {
+      // PIN expired or revoked
+      logout('您的准入码已失效，请重新验证');
+      throw new Error('Auth required');
+    }
+    return res;
+  });
+}
+
+function logout(msg) {
+  doctorPIN = '';
+  doctorName = '';
+  sessionStorage.removeItem('cssrs_doctor_pin');
+  sessionStorage.removeItem('cssrs_doctor_name');
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  showPINView(msg);
+}
+
+// ── PIN View ──
+function showPINView(errorMsg) {
+  document.getElementById('app-header').style.display = 'none';
+  document.getElementById('view-pin').classList.add('active');
+  document.querySelectorAll('.view').forEach(function(v) { v.classList.remove('active'); });
+  document.getElementById('fab').style.display = 'none';
+
+  var pinInputs = document.querySelectorAll('.pin-digit');
+  pinInputs.forEach(function(i) { i.value = ''; i.classList.remove('filled','error'); });
+  pinInputs[0].focus();
+
+  if (errorMsg) {
+    document.getElementById('pin-error').textContent = errorMsg;
+  } else {
+    document.getElementById('pin-error').textContent = '';
+  }
+  document.getElementById('pin-submit').disabled = true;
+}
+
+function submitPIN() {
+  var digits = document.querySelectorAll('.pin-digit');
+  var pin = '';
+  digits.forEach(function(d) { pin += d.value; });
+
+  if (pin.length !== 4) return;
+
+  var submitBtn = document.getElementById('pin-submit');
+  submitBtn.disabled = true;
+  submitBtn.textContent = '验证中...';
+
+  fetch(API + '/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pin: pin }),
+  })
+  .then(function(res) {
+    if (!res.ok) return res.json().then(function(d) { throw new Error(d.detail || '验证失败'); });
+    return res.json();
+  })
+  .then(function(data) {
+    doctorPIN = pin;
+    doctorName = data.doctor_name;
+    sessionStorage.setItem('cssrs_doctor_pin', pin);
+    sessionStorage.setItem('cssrs_doctor_name', data.doctor_name);
+
+    document.getElementById('view-pin').classList.remove('active');
+    enterApp();
+  })
+  .catch(function(err) {
+    document.getElementById('pin-error').textContent = err.message;
+    document.querySelectorAll('.pin-digit').forEach(function(d) {
+      d.classList.add('error');
+      d.value = '';
+    });
+    document.querySelectorAll('.pin-digit')[0].focus();
+    submitBtn.disabled = false;
+    submitBtn.textContent = '验证进入';
+  });
+}
+
+// PIN input handling
+(function() {
+  var inputs = document.querySelectorAll('.pin-digit');
+  inputs.forEach(function(input, idx) {
+    input.addEventListener('input', function(e) {
+      var val = e.target.value.replace(/[^0-9]/g, '');
+      e.target.value = val;
+      if (val) {
+        e.target.classList.add('filled');
+        e.target.classList.remove('error');
+        if (idx < inputs.length - 1) inputs[idx + 1].focus();
+      } else {
+        e.target.classList.remove('filled');
+      }
+      checkPINComplete();
+    });
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'Backspace' && !e.target.value && idx > 0) {
+        inputs[idx - 1].focus();
+        inputs[idx - 1].value = '';
+        inputs[idx - 1].classList.remove('filled');
+      }
+      if (e.key === 'Enter') submitPIN();
+    });
+  });
+
+  function checkPINComplete() {
+    var pin = '';
+    inputs.forEach(function(i) { pin += i.value; });
+    document.getElementById('pin-submit').disabled = pin.length !== 4;
+  }
+})();
 
 // ── Navigation ──
+function enterApp() {
+  document.getElementById('app-header').style.display = 'flex';
+  document.getElementById('header-title-text').textContent = 'C-SSRS · ' + doctorName;
+  showView('list');
+}
+
 function showView(name) {
-  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(function(v) { v.classList.remove('active'); });
   document.getElementById('view-' + name).classList.add('active');
 
-  const fab = document.getElementById('fab');
-  const backBtn = document.getElementById('header-back');
+  var fab = document.getElementById('fab');
+  var backBtn = document.getElementById('header-back');
 
   fab.style.display = name === 'list' ? 'flex' : 'none';
   backBtn.style.display = name === 'list' ? 'none' : 'block';
@@ -614,7 +578,7 @@ function showView(name) {
   if (name === 'create') {
     document.getElementById('patient-id').value = '';
     document.getElementById('patient-phone').value = '';
-    setTimeout(() => document.getElementById('patient-id').focus(), 300);
+    setTimeout(function() { document.getElementById('patient-id').focus(); }, 300);
   }
 }
 
@@ -625,31 +589,28 @@ function goBack() {
 
 // ── Toast ──
 function toast(msg) {
-  const el = document.getElementById('toast');
+  var el = document.getElementById('toast');
   el.textContent = msg;
   el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), 2500);
+  setTimeout(function() { el.classList.remove('show'); }, 2500);
 }
 
 // ── API: Load assessments ──
 async function loadAssessments() {
   try {
-    const res = await fetch(API + '/api/report');
-    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const res = await authFetch(API + '/api/report');
+    if (!res) return;
     const data = await res.json();
     renderCards(data);
   } catch(e) {
     console.error('Load failed:', e);
-    document.getElementById('cards-container').innerHTML = '';
-    document.getElementById('empty-state').style.display = '';
-    document.getElementById('stats-bar').innerHTML = '';
   }
 }
 
 function renderCards(data) {
-  const container = document.getElementById('cards-container');
-  const empty = document.getElementById('empty-state');
-  const stats = document.getElementById('stats-bar');
+  var container = document.getElementById('cards-container');
+  var empty = document.getElementById('empty-state');
+  var stats = document.getElementById('stats-bar');
 
   if (!data || !data.length) {
     container.innerHTML = '';
@@ -660,7 +621,7 @@ function renderCards(data) {
 
   empty.style.display = 'none';
 
-  const highRisk = data.filter(a => ['high','critical'].includes(a.risk_level)).length;
+  var highRisk = data.filter(function(a) { return ['high','critical'].indexOf(a.risk_level) >= 0; }).length;
   stats.innerHTML =
     '<span>共 <strong>' + data.length + '</strong> 条评估</span>' +
     '<span>高风险 <strong style="color:var(--risk-high)">' + highRisk + '</strong> 条</span>';
@@ -701,53 +662,38 @@ async function createSession() {
   }
 
   try {
-    const res = await fetch(API + '/api/sessions', {
+    const res = await authFetch(API + '/api/sessions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ patient_id: patientId, patient_phone: phone || undefined }),
     });
+    if (!res) return;
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
 
-    // Show QR view
     document.getElementById('qr-patient-name').textContent = data.patient_id;
     document.getElementById('qr-patient-phone').textContent = data.patient_phone || '未填写手机号';
     document.getElementById('access-code-display').textContent = data.access_code;
 
-    // QR: direct link to patient page
     var patientUrl = API + '/patient.html?session=' + encodeURIComponent(data.session_id) +
       (data.patient_phone ? '&phone=' + encodeURIComponent(data.patient_phone) : '');
-    // Use QR code image API (generates QR to patient URL)
-    // Need to create a custom QR that links to patient.html directly
-    var qrContainer = document.getElementById('qr-image');
-
-    // Generate QR via canvas using qrcodejs-like approach
-    // Actually, use server endpoint: generate QR for patient URL
-    // Since server QR endpoint uses fixed cloud URL, let's build it manually
     var qrSvgUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=' + encodeURIComponent(patientUrl);
-    qrContainer.src = qrSvgUrl;
+    document.getElementById('qr-image').src = qrSvgUrl;
 
-    // Fallback URL display
     var baseUrl = window.location.origin;
     document.getElementById('code-url').textContent = baseUrl + '/code';
 
     currentSessionId = data.session_id;
     showView('qr');
-
-    // Start polling
     startPolling(data.session_id);
-
     toast('评估已创建，请患者扫码');
   } catch(e) {
     toast('创建失败: ' + e.message);
   }
 }
 
-// ── Polling: check if session completed ──
+// ── Polling ──
 function startPolling(sessionId) {
   if (pollTimer) clearInterval(pollTimer);
-
-  // Poll every 3 seconds
   pollTimer = setInterval(function() {
     fetch(API + '/api/sessions/' + encodeURIComponent(sessionId))
       .then(function(res) { return res.json(); })
@@ -759,7 +705,7 @@ function startPolling(sessionId) {
           setTimeout(function() { showReport(sessionId); }, 800);
         }
       })
-      .catch(function() { /* ignore */ });
+      .catch(function() {});
   }, 3000);
 }
 
@@ -769,7 +715,8 @@ async function showReport(sessionId) {
   document.getElementById('loading').classList.add('show');
 
   try {
-    const res = await fetch(API + '/api/report/' + encodeURIComponent(sessionId));
+    const res = await authFetch(API + '/api/report/' + encodeURIComponent(sessionId));
+    if (!res) return;
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const d = await res.json();
     renderReport(d);
@@ -786,23 +733,19 @@ async function showReport(sessionId) {
 function renderReport(d) {
   var riskColor = getRiskColor(d.risk_level);
   var riskLabel = getRiskLabel(d.risk_level);
-
   var html = '';
 
-  // Risk card
   html += '<div class="report-risk-card" style="background:' + riskColor + ';">' +
     '<div class="risk-text">' + riskLabel + '</div>' +
     '<div class="risk-sub">' + escapeHtml(d.patient_id) + ' · ' + formatDate(d.assessment_date) + '</div>' +
   '</div>';
 
-  // Scores
   html += '<div class="report-section"><h3>评分摘要</h3>';
   html += scoreRow('意念严重度', d.severity_score + '/5', getSeverityName(d.severity_score));
   html += scoreRow('意念强度', d.intensity_total + '/25', d.intensity_level || '不适用');
   html += scoreRow('致死性', d.lethality_level + '/6', '');
   html += '</div>';
 
-  // Patient answers
   var answers = getPatientAnswers(d);
   if (answers.length > 0) {
     html += '<div class="report-section"><h3>答卷原文</h3>';
@@ -813,24 +756,19 @@ function renderReport(d) {
     html += '</div>';
   }
 
-  // Actions
   var actions = d.immediate_actions || [];
   if (actions.length > 0) {
     var isSafe = d.risk_level === 'none';
     html += '<div class="report-section"><h3>处理建议</h3><ul class="action-list">';
-    actions.forEach(function(a) {
-      html += '<li class="' + (isSafe ? 'safe' : '') + '">' + escapeHtml(a) + '</li>';
-    });
+    actions.forEach(function(a) { html += '<li class="' + (isSafe ? 'safe' : '') + '">' + escapeHtml(a) + '</li>'; });
     html += '</ul></div>';
   }
 
-  // Follow up
   if (d.follow_up) {
     html += '<div class="report-section"><h3>随访计划</h3>' +
       '<p style="font-size:14px;color:var(--text);">' + escapeHtml(d.follow_up) + '</p></div>';
   }
 
-  // Back button
   html += '<div class="btn-row" style="margin-top:24px;">' +
     '<button class="btn btn-primary" onclick="goBack()">返回列表</button>' +
   '</div>';
@@ -851,54 +789,45 @@ function getPatientAnswers(d) {
   if (d.i1_duration) answers.push({label:'持续时间', value:d.i1_duration});
   if (d.i1_frequency) answers.push({label:'出现频率', value:d.i1_frequency});
   if (d.i2_nature) answers.push({label:'意念内容', value:d.i2_nature});
-  if (d.i3_method) {
-    answers.push({label:'自杀方法', value:d.i3_method});
-    if (d.i3_location) answers.push({label:'地点', value:d.i3_location});
-    if (d.i3_timing) answers.push({label:'时机', value:d.i3_timing});
-  }
+  if (d.i3_method) { answers.push({label:'自杀方法', value:d.i3_method}); if(d.i3_location) answers.push({label:'地点', value:d.i3_location}); if(d.i3_timing) answers.push({label:'时机', value:d.i3_timing}); }
   if (d.i4_intent_strength != null) answers.push({label:'意图强度', value:d.i4_intent_strength + '/10'});
-  if (d.b4_behavior) {
-    answers.push({label:'准备行为', value:d.b4_behavior});
-    if (d.b4_date) answers.push({label:'日期', value:d.b4_date});
-  }
-  if (d.b1_method) {
-    answers.push({label:'企图方法', value:d.b1_method});
-    if (d.b1_date) answers.push({label:'日期', value:d.b1_date});
-  }
+  if (d.b4_behavior) { answers.push({label:'准备行为', value:d.b4_behavior}); if(d.b4_date) answers.push({label:'日期', value:d.b4_date}); }
+  if (d.b1_method) { answers.push({label:'企图方法', value:d.b1_method}); if(d.b1_date) answers.push({label:'日期', value:d.b1_date}); }
   if (d.b2_method) answers.push({label:'中断行为', value:d.b2_method});
   if (d.b3_method) answers.push({label:'中止行为', value:d.b3_method});
   return answers;
 }
 
-// ── Helpers ──
-function getRiskLabel(level) {
-  var map = { none:'无风险', low:'低风险', medium:'中风险', high:'高风险', critical:'极高风险' };
-  return map[level] || '未知';
-}
-function getRiskColor(level) {
-  var map = { none:'#22C55E', low:'#EAB308', medium:'#FFA500', high:'#FF4444', critical:'#8B0000' };
-  return map[level] || '#64748B';
-}
-function getSeverityName(score) {
-  var map = {0:'无自杀意念',1:'渴望死亡',2:'非特定主动意念',3:'有方法的主动意念',4:'有意图无计划',5:'有计划有意图'};
-  return map[score] || '未知';
-}
-function formatDate(s) {
-  if (!s) return '-';
-  return s.slice(0, 10);
-}
-function escapeHtml(s) {
-  if (!s) return '';
-  var d = document.createElement('div');
-  d.textContent = s;
-  return d.innerHTML;
-}
-function escapeJs(s) {
-  return (s||'').replace(/'/g, "\\'").replace(/\\/g, '\\\\');
-}
+function getRiskLabel(level) { var m={none:'无风险',low:'低风险',medium:'中风险',high:'高风险',critical:'极高风险'}; return m[level]||'未知'; }
+function getRiskColor(level) { var m={none:'#22C55E',low:'#EAB308',medium:'#FFA500',high:'#FF4444',critical:'#8B0000'}; return m[level]||'#64748B'; }
+function getSeverityName(score) { var m={0:'无自杀意念',1:'渴望死亡',2:'非特定主动意念',3:'有方法的主动意念',4:'有意图无计划',5:'有计划有意图'}; return m[score]||'未知'; }
+function formatDate(s) { if(!s) return '-'; return s.slice(0,10); }
+function escapeHtml(s) { if(!s) return ''; var d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+function escapeJs(s) { return (s||'').replace(/'/g,"\\'").replace(/\\/g,'\\\\'); }
 
 // ── Init ──
-loadAssessments();
+if (doctorPIN) {
+  // Verify existing PIN
+  fetch(API + '/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pin: doctorPIN }),
+  })
+  .then(function(res) {
+    if (!res.ok) throw new Error('invalid');
+    return res.json();
+  })
+  .then(function(data) {
+    doctorName = data.doctor_name;
+    sessionStorage.setItem('cssrs_doctor_name', doctorName);
+    enterApp();
+  })
+  .catch(function() {
+    showPINView('您的准入码已失效，请重新验证');
+  });
+} else {
+  showPINView();
+}
 </script>
 </body>
 </html>
