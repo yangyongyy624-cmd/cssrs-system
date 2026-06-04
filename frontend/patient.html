@@ -1168,23 +1168,23 @@
 
     // Nav: Intensity prev/next
     document.getElementById('intensityPrev').addEventListener('click', function() {
-      showSection(0);
+      showSection(1);
     });
     document.getElementById('intensityNext').addEventListener('click', function() {
-      showSection(2);
+      showSection(3);
     });
 
     // Nav: Behavior prev/next
     document.getElementById('behaviorPrev').addEventListener('click', function() {
       if (state.answers.i1 === true) {
-        showSection(1);
+        showSection(2);
       } else {
-        showSection(0);
+        showSection(1);
       }
     });
     document.getElementById('behaviorNext').addEventListener('click', function() {
       collectFollowups();
-      showSection(3);
+      showSection(4);
     });
 
     // Submit
