@@ -71,8 +71,12 @@
   <div class="hint">
     打开手机系统相机扫描，即可进入医生端
   </div>
-  <div class="url">http://82.156.238.242:8888/mobile</div>
+  <div class="url" id="doctor-url"></div>
   <div class="footer">Columbia Suicide Severity Rating Scale · 电子评估系统</div>
 </div>
+<script>
+  // Dynamically set the URL to avoid hardcoded server address
+  document.getElementById('doctor-url').textContent = window.location.origin + '/mobile';
+</script>
 </body>
 </html>

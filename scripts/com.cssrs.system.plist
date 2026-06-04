@@ -5,10 +5,10 @@
     <key>Label</key>
     <string>com.cssrs.system</string>
     <key>WorkingDirectory</key>
-    <string>/Users/zujing/Developer/cssrs-system/backend</string>
+    <string>/Users/YOUR_USERNAME/Developer/cssrs-system/backend</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/zujing/Developer/cssrs-system/.venv/bin/python</string>
+        <string>/Users/YOUR_USERNAME/Developer/cssrs-system/.venv/bin/python</string>
         <string>-m</string>
         <string>uvicorn</string>
         <string>main:app</string>
@@ -22,7 +22,9 @@
     <key>EnvironmentVariables</key>
     <dict>
         <key>PROJECT_DIR</key>
-        <string>/Users/zujing/Developer/cssrs-system</string>
+        <string>/Users/YOUR_USERNAME/Developer/cssrs-system</string>
+        <key>CLOUD_GATEWAY_URL</key>
+        <string>http://YOUR_SERVER:8888</string>
     </dict>
     <key>RunAtLoad</key>
     <true/>
@@ -31,8 +33,8 @@
     <key>ThrottleInterval</key>
     <integer>10</integer>
     <key>StandardOutPath</key>
-    <string>/Users/zujing/Developer/cssrs-system/logs/launchd.out.log</string>
+    <string>/Users/YOUR_USERNAME/Developer/cssrs-system/logs/launchd.out.log</string>
     <key>StandardErrorPath</key>
-    <string>/Users/zujing/Developer/cssrs-system/logs/launchd.err.log</string>
+    <string>/Users/YOUR_USERNAME/Developer/cssrs-system/logs/launchd.err.log</string>
 </dict>
 </plist>

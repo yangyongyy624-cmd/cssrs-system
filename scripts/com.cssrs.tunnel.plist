@@ -19,10 +19,10 @@
         <string>-o</string>
         <string>ExitOnForwardFailure=yes</string>
         <string>-i</string>
-        <string>/Users/zujing/.ssh/id_ed25519_cloud</string>
+        <string>/Users/YOUR_USERNAME/.ssh/YOUR_SSH_KEY</string>
         <string>-R</string>
         <string>0.0.0.0:8889:127.0.0.1:8000</string>
-        <string>ubuntu@82.156.238.242</string>
+        <string>ubuntu@YOUR_SERVER_IP</string>
     </array>
     <key>RunAtLoad</key>
     <true/>
@@ -34,8 +34,8 @@
     <key>ThrottleInterval</key>
     <integer>30</integer>
     <key>StandardOutPath</key>
-    <string>/Users/zujing/Developer/cssrs-system/logs/tunnel.log</string>
+    <string>/Users/YOUR_USERNAME/Developer/cssrs-system/logs/tunnel.log</string>
     <key>StandardErrorPath</key>
-    <string>/Users/zujing/Developer/cssrs-system/logs/tunnel.err.log</string>
+    <string>/Users/YOUR_USERNAME/Developer/cssrs-system/logs/tunnel.err.log</string>
 </dict>
 </plist>

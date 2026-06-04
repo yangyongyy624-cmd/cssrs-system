@@ -2,7 +2,6 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="refresh" content="0;url=http://82.156.238.242:8888/">
     <title>C-SSRS 电子评估系统</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -21,7 +20,13 @@
         <h1>C-SSRS 电子评估系统</h1>
         <p>正在跳转到医生端，请稍候…</p>
         <div class="spinner"></div>
-        <a class="btn" href="http://82.156.238.242:8888/">手动进入</a>
+        <a class="btn" id="enter-btn" href="/">手动进入</a>
     </div>
+<script>
+    // Dynamically redirect to avoid hardcoded server address
+    var target = window.location.origin + '/';
+    document.getElementById('enter-btn').href = target;
+    window.location.href = target;
+</script>
 </body>
 </html>

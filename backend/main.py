@@ -1,4 +1,5 @@
 """C-SSRS Electronic Assessment System — FastAPI Backend"""
+import os
 import socket
 import uuid
 
@@ -15,6 +16,8 @@ def get_local_ip():
 
 LOCAL_IP = get_local_ip()
 LOCAL_PORT = 8000
+# Cloud gateway URL for QR codes and patient links (configured via environment variable)
+CLOUD_GATEWAY_URL = os.environ.get("CLOUD_GATEWAY_URL", "http://YOUR_SERVER:8888")
 from datetime import datetime
 from pathlib import Path
 
@@ -390,7 +393,7 @@ def generate_patient_link(session_id: str):
     # Return the access code so frontend can build QR URL
     access_code = session.get("access_code", "")
     phone = session.get("patient_phone", "")
-    patient_url = f"http://82.156.238.242:8888/patient.html?session={session_id}"
+    patient_url = f"{CLOUD_GATEWAY_URL}/patient.html?session={session_id}"
     if phone:
         patient_url += f"&phone={phone}"
     return {
@@ -403,7 +406,7 @@ def generate_patient_link(session_id: str):
 @app.get("/api/qr/{access_code}")
 def generate_qr(access_code: str):
     """Generate a QR code PNG that links to the patient self-assessment page via cloud gateway."""
-    qr_url = f"http://82.156.238.242:8888/code?code={access_code}"
+    qr_url = f"{CLOUD_GATEWAY_URL}/code?code={access_code}"
     qr = qrcode.QRCode(
         version=1,
         error_correction=qrcode.constants.ERROR_CORRECT_L,
