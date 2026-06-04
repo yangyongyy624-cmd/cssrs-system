@@ -275,6 +275,33 @@ def summary_endpoint(limit: int = 5):
     }
 
 
+@app.get("/mobile")
+def serve_mobile_doctor():
+    mobile_html = frontend_dir / "mobile-doctor.html"
+    if mobile_html.exists():
+        return FileResponse(str(mobile_html), headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+    raise HTTPException(status_code=404, detail="mobile-doctor.html not found")
+
+
+@app.get("/api/qr-link/{session_id}")
+def generate_patient_link(session_id: str):
+    """Generate a direct patient URL for a session (for QR code)"""
+    session = get_session(session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+    # Return the access code so frontend can build QR URL
+    access_code = session.get("access_code", "")
+    phone = session.get("patient_phone", "")
+    patient_url = f"http://82.156.238.242:8888/patient.html?session={session_id}"
+    if phone:
+        patient_url += f"&phone={phone}"
+    return {
+        "patient_url": patient_url,
+        "access_code": access_code,
+        "session_id": session_id,
+    }
+
+
 @app.get("/api/qr/{access_code}")
 def generate_qr(access_code: str):
     """Generate a QR code PNG that links to the patient self-assessment page via cloud gateway."""

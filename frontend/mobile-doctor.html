@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="C-SSRS">
+<meta name="theme-color" content="#2563EB">
+<title>C-SSRS 医生端</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192x192.png">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+:root {
+  --primary: #2563EB;
+  --primary-dark: #1D4ED8;
+  --bg: #F5F7FA;
+  --card: #FFFFFF;
+  --border: #E2E8F0;
+  --text: #1E293B;
+  --text-secondary: #64748B;
+  --risk-none: #22C55E;
+  --risk-low: #EAB308;
+  --risk-medium: #FFA500;
+  --risk-high: #FF4444;
+  --risk-critical: #8B0000;
+  --radius: 16px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* ── Header ── */
+.header {
+  background: var(--primary);
+  color: white;
+  padding: 16px 20px;
+  padding-top: max(16px, env(safe-area-inset-top));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(37,99,235,0.3);
+}
+.header-title {
+  font-size: 18px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.header-title .logo {
+  width: 28px;
+  height: 28px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 800;
+}
+.header-btn {
+  background: rgba(255,255,255,0.2);
+  border: none;
+  color: white;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.header-btn:active { background: rgba(255,255,255,0.3); }
+
+/* ── Views ── */
+.view { display: none; padding: 16px 20px 100px; }
+.view.active { display: block; }
+
+/* ── FAB ── */
+.fab {
+  position: fixed;
+  bottom: max(24px, env(safe-area-inset-bottom));
+  right: 20px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: white;
+  border: none;
+  font-size: 28px;
+  font-weight: 300;
+  box-shadow: 0 4px 16px rgba(37,99,235,0.4);
+  cursor: pointer;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.fab:active { transform: scale(0.95); }
+
+/* ── Cards ── */
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+.card:active { transform: scale(0.98); }
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+.card-patient {
+  font-size: 16px;
+  font-weight: 600;
+}
+.card-phone {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-family: "SF Mono", monospace;
+}
+.card-date {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+/* ── Risk badge ── */
+.risk-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.risk-badge .dot { width: 6px; height: 6px; border-radius: 50%; }
+.r-none { background:#F0FDF4; color:#15803D; }
+.r-none .dot { background:var(--risk-none); }
+.r-low { background:#FEFCE8; color:#A16207; }
+.r-low .dot { background:var(--risk-low); }
+.r-medium { background:#FFF7ED; color:#C2410C; }
+.r-medium .dot { background:var(--risk-medium); }
+.r-high { background:#FEF2F2; color:#DC2626; }
+.r-high .dot { background:var(--risk-high); }
+.r-critical { background:#FEE2E2; color:#991B1B; }
+.r-critical .dot { background:var(--risk-critical); }
+
+/* ── Stats bar ── */
+.stats-bar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.stats-bar strong { color: var(--text); font-weight: 700; }
+
+/* ── Create form ── */
+.create-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 24px 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+.create-card h2 {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.create-card .subtitle {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+}
+.form-group { margin-bottom: 16px; }
+.form-group label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.form-group input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  font-size: 16px;
+  font-family: inherit;
+  background: var(--bg);
+  transition: border-color 0.15s;
+}
+.form-group input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+  background: white;
+}
+.form-group .hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+.btn-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+.btn {
+  flex: 1;
+  padding: 14px;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+.btn:active { transform: scale(0.98); }
+.btn-primary { background: var(--primary); color: white; }
+.btn-primary:active { background: var(--primary-dark); }
+.btn-secondary { background: var(--bg); color: var(--text); border: 1.5px solid var(--border); }
+
+/* ── QR view ── */
+.qr-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 20px;
+}
+.qr-patient-info {
+  text-align: center;
+  margin-bottom: 24px;
+}
+.qr-patient-name {
+  font-size: 20px;
+  font-weight: 700;
+}
+.qr-patient-phone {
+  font-size: 14px;
+  color: var(--text-secondary);
+  font-family: "SF Mono", monospace;
+  margin-top: 4px;
+}
+.qr-frame {
+  background: white;
+  padding: 16px;
+  border-radius: 20px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+  border: 2px dashed var(--primary);
+  margin-bottom: 24px;
+}
+.qr-frame img {
+  width: 240px;
+  height: 240px;
+  display: block;
+}
+.qr-instruction {
+  text-align: center;
+  margin-bottom: 32px;
+}
+.qr-instruction h3 {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.qr-instruction p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+.qr-instruction .steps {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin-top: 16px;
+}
+.qr-instruction .step {
+  text-align: center;
+  flex: 0 1 100px;
+}
+.qr-instruction .step-icon {
+  width: 40px;
+  height: 40px;
+  background: var(--bg);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 8px;
+  font-size: 18px;
+}
+.qr-instruction .step-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* ── Polling status ── */
+.poll-status {
+  text-align: center;
+  padding: 20px;
+}
+.poll-spinner {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+}
+.poll-spinner .dot {
+  width: 8px;
+  height: 8px;
+  background: var(--primary);
+  border-radius: 50%;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+/* ── Code display (fallback) ── */
+.code-display {
+  text-align: center;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.code-display .label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+.code-display .code {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: 6px;
+  color: var(--primary);
+  font-family: "SF Mono", "Menlo", monospace;
+  background: #EFF6FF;
+  padding: 8px 24px;
+  border-radius: 12px;
+  display: inline-block;
+}
+.code-display .hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 8px;
+}
+
+/* ── Report view ── */
+.report-risk-card {
+  padding: 20px;
+  border-radius: var(--radius);
+  text-align: center;
+  margin-bottom: 16px;
+}
+.report-risk-card .risk-text {
+  font-size: 28px;
+  font-weight: 800;
+  color: white;
+}
+.report-risk-card .risk-sub {
+  font-size: 13px;
+  color: rgba(255,255,255,0.8);
+  margin-top: 4px;
+}
+.report-section {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+.report-section h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.score-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.score-row:last-child { border-bottom: none; }
+.score-label { font-size: 14px; color: var(--text-secondary); }
+.score-value { font-size: 16px; font-weight: 700; }
+.answer-row {
+  display: flex;
+  gap: 8px;
+  padding: 8px 0;
+  font-size: 14px;
+}
+.answer-label { color: var(--text-secondary); min-width: 70px; }
+.answer-value { flex: 1; }
+.action-list { list-style: none; }
+.action-list li {
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  background: #FEF2F2;
+  border-left: 3px solid #EF4444;
+  border-radius: 0 8px 8px 0;
+  font-size: 14px;
+  color: #991B1B;
+}
+.action-list li.safe {
+  background: #F0FDF4;
+  border-left-color: var(--risk-none);
+  color: #15803D;
+}
+
+/* ── Empty state ── */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-secondary);
+}
+.empty-state .icon { font-size: 48px; margin-bottom: 12px; opacity: 0.4; }
+.empty-state p { font-size: 14px; }
+
+/* ── Toast ── */
+.toast {
+  position: fixed;
+  bottom: max(80px, env(safe-area-inset-bottom));
+  left: 20px;
+  right: 20px;
+  background: #1E293B;
+  color: white;
+  padding: 14px 20px;
+  border-radius: 12px;
+  font-size: 14px;
+  text-align: center;
+  z-index: 200;
+  transform: translateY(120%);
+  transition: transform 0.3s ease;
+}
+.toast.show { transform: translateY(0); }
+
+/* ── Loading overlay ── */
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(255,255,255,0.9);
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s;
+}
+.loading-overlay.show { opacity: 1; visibility: visible; }
+.loading-overlay .spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  margin-bottom: 12px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-title">
+    <div class="logo">C</div>
+    C-SSRS 医生端
+  </div>
+  <button class="header-btn" id="header-back" style="display:none;" onclick="goBack()">← 返回</button>
+</div>
+
+<!-- View 1: List -->
+<div class="view active" id="view-list">
+  <div class="stats-bar" id="stats-bar"></div>
+  <div id="cards-container"></div>
+  <div class="empty-state" id="empty-state" style="display:none;">
+    <div class="icon">📋</div>
+    <p>暂无评估记录</p>
+    <p style="margin-top:8px; font-size:13px;">点击下方 ＋ 开始新评估</p>
+  </div>
+</div>
+
+<!-- View 2: Create -->
+<div class="view" id="view-create">
+  <div class="create-card">
+    <h2>新建评估</h2>
+    <p class="subtitle">输入患者信息以创建新的评估</p>
+    <div class="form-group">
+      <label for="patient-id">患者ID</label>
+      <input type="text" id="patient-id" placeholder="输入患者ID或留空自动生成" autocomplete="off">
+      <div class="hint">可用姓名缩写、病历号等</div>
+    </div>
+    <div class="form-group">
+      <label for="patient-phone">患者手机号</label>
+      <input type="tel" id="patient-phone" placeholder="11位手机号" inputmode="numeric" pattern="[0-9]*" maxlength="11" autocomplete="off">
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="showView('list')">取消</button>
+      <button class="btn btn-primary" onclick="createSession()">创建评估</button>
+    </div>
+  </div>
+</div>
+
+<!-- View 3: QR -->
+<div class="view" id="view-qr">
+  <div class="qr-view">
+    <div class="qr-patient-info">
+      <div class="qr-patient-name" id="qr-patient-name"></div>
+      <div class="qr-patient-phone" id="qr-patient-phone"></div>
+    </div>
+
+    <div class="qr-frame">
+      <img id="qr-image" src="" alt="QR Code">
+    </div>
+
+    <div class="qr-instruction">
+      <h3>请患者扫码开始评估</h3>
+      <p>患者用手机系统相机扫描二维码</p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-icon">📷</div>
+          <div class="step-text">打开系统相机</div>
+        </div>
+        <div class="step">
+          <div class="step-icon">📱</div>
+          <div class="step-text">对准二维码</div>
+        </div>
+        <div class="step">
+          <div class="step-icon">✅</div>
+          <div class="step-text">点击弹出链接</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="code-display">
+      <div class="label">如果扫码失败，患者也可手动输入访问码</div>
+      <div class="code" id="access-code-display"></div>
+      <div class="hint">手机浏览器访问 <span id="code-url"></span> 输入上方6位码</div>
+    </div>
+
+    <div class="poll-status" id="poll-status">
+      <div class="poll-spinner"><div class="dot"></div>等待患者完成答题...</div>
+    </div>
+  </div>
+</div>
+
+<!-- View 4: Report -->
+<div class="view" id="view-report">
+  <div id="report-content"></div>
+</div>
+
+<!-- FAB -->
+<button class="fab" id="fab" onclick="showView('create')">+</button>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loading">
+  <div class="spinner"></div>
+  <p style="font-size:14px; color:var(--text-secondary);">加载中...</p>
+</div>
+
+<script>
+const API = window.location.origin;
+let pollTimer = null;
+let currentSessionId = null;
+
+// ── Navigation ──
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+
+  const fab = document.getElementById('fab');
+  const backBtn = document.getElementById('header-back');
+
+  fab.style.display = name === 'list' ? 'flex' : 'none';
+  backBtn.style.display = name === 'list' ? 'none' : 'block';
+
+  if (name === 'list') {
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    loadAssessments();
+  }
+  if (name === 'create') {
+    document.getElementById('patient-id').value = '';
+    document.getElementById('patient-phone').value = '';
+    setTimeout(() => document.getElementById('patient-id').focus(), 300);
+  }
+}
+
+function goBack() {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  showView('list');
+}
+
+// ── Toast ──
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ── API: Load assessments ──
+async function loadAssessments() {
+  try {
+    const res = await fetch(API + '/api/report');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    renderCards(data);
+  } catch(e) {
+    console.error('Load failed:', e);
+    document.getElementById('cards-container').innerHTML = '';
+    document.getElementById('empty-state').style.display = '';
+    document.getElementById('stats-bar').innerHTML = '';
+  }
+}
+
+function renderCards(data) {
+  const container = document.getElementById('cards-container');
+  const empty = document.getElementById('empty-state');
+  const stats = document.getElementById('stats-bar');
+
+  if (!data || !data.length) {
+    container.innerHTML = '';
+    empty.style.display = '';
+    stats.innerHTML = '';
+    return;
+  }
+
+  empty.style.display = 'none';
+
+  const highRisk = data.filter(a => ['high','critical'].includes(a.risk_level)).length;
+  stats.innerHTML =
+    '<span>共 <strong>' + data.length + '</strong> 条评估</span>' +
+    '<span>高风险 <strong style="color:var(--risk-high)">' + highRisk + '</strong> 条</span>';
+
+  container.innerHTML = data.map(function(a) {
+    var riskClass = 'r-' + (a.risk_level || 'none');
+    var riskLabel = getRiskLabel(a.risk_level);
+    var dateStr = formatDate(a.assessment_date);
+    return '<div class="card" onclick="showReport(\'' + escapeJs(a.session_id) + '\')">' +
+      '<div class="card-header">' +
+        '<div>' +
+          '<div class="card-patient">' + escapeHtml(a.patient_id) + '</div>' +
+          (a.patient_phone ? '<div class="card-phone">' + escapeHtml(a.patient_phone) + '</div>' : '') +
+        '</div>' +
+        '<span class="risk-badge ' + riskClass + '"><span class="dot"></span>' + riskLabel + '</span>' +
+      '</div>' +
+      '<div class="card-date">' + dateStr +
+        ' · 严重度 ' + (a.severity_score || '-') +
+        ' · 强度 ' + (a.intensity_total != null ? a.intensity_total : '-') +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+// ── API: Create session ──
+async function createSession() {
+  var patientId = document.getElementById('patient-id').value.trim();
+  var phone = document.getElementById('patient-phone').value.trim();
+
+  if (!patientId) {
+    patientId = 'P' + Date.now().toString().slice(-8);
+    document.getElementById('patient-id').value = patientId;
+  }
+
+  if (phone && phone.length !== 11) {
+    toast('请输入正确的11位手机号');
+    return;
+  }
+
+  try {
+    const res = await fetch(API + '/api/sessions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ patient_id: patientId, patient_phone: phone || undefined }),
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+
+    // Show QR view
+    document.getElementById('qr-patient-name').textContent = data.patient_id;
+    document.getElementById('qr-patient-phone').textContent = data.patient_phone || '未填写手机号';
+    document.getElementById('access-code-display').textContent = data.access_code;
+
+    // QR: direct link to patient page
+    var patientUrl = API + '/patient.html?session=' + encodeURIComponent(data.session_id) +
+      (data.patient_phone ? '&phone=' + encodeURIComponent(data.patient_phone) : '');
+    // Use QR code image API (generates QR to patient URL)
+    // Need to create a custom QR that links to patient.html directly
+    var qrContainer = document.getElementById('qr-image');
+
+    // Generate QR via canvas using qrcodejs-like approach
+    // Actually, use server endpoint: generate QR for patient URL
+    // Since server QR endpoint uses fixed cloud URL, let's build it manually
+    var qrSvgUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=' + encodeURIComponent(patientUrl);
+    qrContainer.src = qrSvgUrl;
+
+    // Fallback URL display
+    var baseUrl = window.location.origin;
+    document.getElementById('code-url').textContent = baseUrl + '/code';
+
+    currentSessionId = data.session_id;
+    showView('qr');
+
+    // Start polling
+    startPolling(data.session_id);
+
+    toast('评估已创建，请患者扫码');
+  } catch(e) {
+    toast('创建失败: ' + e.message);
+  }
+}
+
+// ── Polling: check if session completed ──
+function startPolling(sessionId) {
+  if (pollTimer) clearInterval(pollTimer);
+
+  // Poll every 3 seconds
+  pollTimer = setInterval(function() {
+    fetch(API + '/api/sessions/' + encodeURIComponent(sessionId))
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (data.assessed) {
+          clearInterval(pollTimer);
+          pollTimer = null;
+          toast('✅ 患者已完成评估');
+          setTimeout(function() { showReport(sessionId); }, 800);
+        }
+      })
+      .catch(function() { /* ignore */ });
+  }, 3000);
+}
+
+// ── Report ──
+async function showReport(sessionId) {
+  showView('report');
+  document.getElementById('loading').classList.add('show');
+
+  try {
+    const res = await fetch(API + '/api/report/' + encodeURIComponent(sessionId));
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const d = await res.json();
+    renderReport(d);
+  } catch(e) {
+    document.getElementById('report-content').innerHTML =
+      '<div class="empty-state"><div class="icon">⚠️</div><p>无法加载报告</p>' +
+      '<p style="margin-top:8px;font-size:13px;">' + escapeHtml(e.message) + '</p>' +
+      '<button class="btn btn-secondary" style="margin-top:16px;" onclick="goBack()">返回</button></div>';
+  } finally {
+    document.getElementById('loading').classList.remove('show');
+  }
+}
+
+function renderReport(d) {
+  var riskColor = getRiskColor(d.risk_level);
+  var riskLabel = getRiskLabel(d.risk_level);
+
+  var html = '';
+
+  // Risk card
+  html += '<div class="report-risk-card" style="background:' + riskColor + ';">' +
+    '<div class="risk-text">' + riskLabel + '</div>' +
+    '<div class="risk-sub">' + escapeHtml(d.patient_id) + ' · ' + formatDate(d.assessment_date) + '</div>' +
+  '</div>';
+
+  // Scores
+  html += '<div class="report-section"><h3>评分摘要</h3>';
+  html += scoreRow('意念严重度', d.severity_score + '/5', getSeverityName(d.severity_score));
+  html += scoreRow('意念强度', d.intensity_total + '/25', d.intensity_level || '不适用');
+  html += scoreRow('致死性', d.lethality_level + '/6', '');
+  html += '</div>';
+
+  // Patient answers
+  var answers = getPatientAnswers(d);
+  if (answers.length > 0) {
+    html += '<div class="report-section"><h3>答卷原文</h3>';
+    answers.forEach(function(a) {
+      html += '<div class="answer-row"><span class="answer-label">' + escapeHtml(a.label) + '</span>' +
+        '<span class="answer-value">' + escapeHtml(a.value) + '</span></div>';
+    });
+    html += '</div>';
+  }
+
+  // Actions
+  var actions = d.immediate_actions || [];
+  if (actions.length > 0) {
+    var isSafe = d.risk_level === 'none';
+    html += '<div class="report-section"><h3>处理建议</h3><ul class="action-list">';
+    actions.forEach(function(a) {
+      html += '<li class="' + (isSafe ? 'safe' : '') + '">' + escapeHtml(a) + '</li>';
+    });
+    html += '</ul></div>';
+  }
+
+  // Follow up
+  if (d.follow_up) {
+    html += '<div class="report-section"><h3>随访计划</h3>' +
+      '<p style="font-size:14px;color:var(--text);">' + escapeHtml(d.follow_up) + '</p></div>';
+  }
+
+  // Back button
+  html += '<div class="btn-row" style="margin-top:24px;">' +
+    '<button class="btn btn-primary" onclick="goBack()">返回列表</button>' +
+  '</div>';
+
+  document.getElementById('report-content').innerHTML = html;
+}
+
+function scoreRow(label, value, sub) {
+  return '<div class="score-row">' +
+    '<span class="score-label">' + label + '</span>' +
+    '<span class="score-value">' + value + (sub ? ' <span style="font-size:12px;color:var(--text-secondary);font-weight:400;">' + escapeHtml(sub) + '</span>' : '') + '</span>' +
+  '</div>';
+}
+
+function getPatientAnswers(d) {
+  var answers = [];
+  if (d.i1_onset) answers.push({label:'出现时间', value:d.i1_onset});
+  if (d.i1_duration) answers.push({label:'持续时间', value:d.i1_duration});
+  if (d.i1_frequency) answers.push({label:'出现频率', value:d.i1_frequency});
+  if (d.i2_nature) answers.push({label:'意念内容', value:d.i2_nature});
+  if (d.i3_method) {
+    answers.push({label:'自杀方法', value:d.i3_method});
+    if (d.i3_location) answers.push({label:'地点', value:d.i3_location});
+    if (d.i3_timing) answers.push({label:'时机', value:d.i3_timing});
+  }
+  if (d.i4_intent_strength != null) answers.push({label:'意图强度', value:d.i4_intent_strength + '/10'});
+  if (d.b4_behavior) {
+    answers.push({label:'准备行为', value:d.b4_behavior});
+    if (d.b4_date) answers.push({label:'日期', value:d.b4_date});
+  }
+  if (d.b1_method) {
+    answers.push({label:'企图方法', value:d.b1_method});
+    if (d.b1_date) answers.push({label:'日期', value:d.b1_date});
+  }
+  if (d.b2_method) answers.push({label:'中断行为', value:d.b2_method});
+  if (d.b3_method) answers.push({label:'中止行为', value:d.b3_method});
+  return answers;
+}
+
+// ── Helpers ──
+function getRiskLabel(level) {
+  var map = { none:'无风险', low:'低风险', medium:'中风险', high:'高风险', critical:'极高风险' };
+  return map[level] || '未知';
+}
+function getRiskColor(level) {
+  var map = { none:'#22C55E', low:'#EAB308', medium:'#FFA500', high:'#FF4444', critical:'#8B0000' };
+  return map[level] || '#64748B';
+}
+function getSeverityName(score) {
+  var map = {0:'无自杀意念',1:'渴望死亡',2:'非特定主动意念',3:'有方法的主动意念',4:'有意图无计划',5:'有计划有意图'};
+  return map[score] || '未知';
+}
+function formatDate(s) {
+  if (!s) return '-';
+  return s.slice(0, 10);
+}
+function escapeHtml(s) {
+  if (!s) return '';
+  var d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+function escapeJs(s) {
+  return (s||'').replace(/'/g, "\\'").replace(/\\/g, '\\\\');
+}
+
+// ── Init ──
+loadAssessments();
+</script>
+</body>
+</html>
