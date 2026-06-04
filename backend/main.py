@@ -72,10 +72,9 @@ init_doctor_pins_table()
 
 @app.get("/")
 def serve_doctor_page():
-    doctor_html = frontend_dir / "doctor.html"
-    if doctor_html.exists():
-        return FileResponse(str(doctor_html), headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
-    return {"message": "C-SSRS Electronic Assessment System API", "docs": "/docs"}
+    """Redirect to mobile doctor page which requires PIN authentication"""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/mobile")
 
 
 @app.get("/patient.html")
