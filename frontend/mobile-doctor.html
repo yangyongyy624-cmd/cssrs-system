@@ -435,16 +435,16 @@ body {
 const API = window.location.origin;
 let pollTimer = null;
 let currentSessionId = null;
-// ── Storage helper: sessionStorage (same as admin page) ──
+// ── Storage helper: localStorage (persistent, same behavior as admin after logout) ──
 var Storage = {
   get: function(key) {
-    try { return sessionStorage.getItem(key) || ''; } catch(e) { return ''; }
+    try { return localStorage.getItem(key) || ''; } catch(e) { return ''; }
   },
   set: function(key, val) {
-    try { sessionStorage.setItem(key, val); } catch(e) {}
+    try { localStorage.setItem(key, val); } catch(e) {}
   },
   remove: function(key) {
-    try { sessionStorage.removeItem(key); } catch(e) {}
+    try { localStorage.removeItem(key); } catch(e) {}
   }
 };
 
