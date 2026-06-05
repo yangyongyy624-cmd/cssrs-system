@@ -240,12 +240,55 @@
 
   .risk-badge {
     display: inline-block; padding: 12px 28px; border-radius: 100px;
-    font-size: 18px; font-weight: 700; margin-bottom: 24px;
+    font-size: 18px; font-weight: 700; margin-bottom: 16px;
   }
   .risk-low { background: #dcfce7; color: #166534; }
   .risk-medium { background: #fef9c3; color: #854d0e; }
   .risk-high { background: #ffedd5; color: #9a3412; }
   .risk-critical { background: #fecaca; color: #991b1b; }
+
+  /* Score details */
+  .score-details {
+    background: white; border-radius: var(--radius); padding: 20px;
+    box-shadow: var(--shadow); text-align: left; margin-bottom: 20px;
+  }
+  .score-details h3 {
+    font-size: 16px; font-weight: 600; color: var(--gray-700); margin-bottom: 16px; text-align: center;
+  }
+  .score-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px;
+  }
+  .score-item {
+    text-align: center; padding: 12px 8px; background: var(--gray-50); border-radius: 8px;
+  }
+  .score-label {
+    font-size: 12px; color: var(--gray-500); margin-bottom: 6px;
+  }
+  .score-value {
+    font-size: 28px; font-weight: 800; color: var(--primary); line-height: 1;
+  }
+  .score-desc {
+    font-size: 11px; color: var(--gray-600); margin-top: 6px; line-height: 1.3;
+  }
+  .intensity-breakdown {
+    background: var(--gray-50); border-radius: 8px; padding: 12px;
+  }
+  .intensity-breakdown h4 {
+    font-size: 13px; font-weight: 600; color: var(--gray-600); margin-bottom: 8px; text-align: center;
+  }
+  .intensity-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 4px 0; font-size: 13px;
+  }
+  .intensity-row .label { color: var(--gray-600); }
+  .intensity-row .value { font-weight: 600; color: var(--gray-800); }
+  .intensity-total {
+    display: flex; justify-content: space-between; align-items: center;
+    padding-top: 8px; margin-top: 8px; border-top: 1px solid var(--gray-200);
+    font-weight: 700; font-size: 14px;
+  }
+  .intensity-total .label { color: var(--gray-700); }
+  .intensity-total .value { color: var(--primary); font-size: 16px; }
 
   .result-advice {
     background: white; border-radius: var(--radius); padding: 20px;
@@ -734,6 +777,30 @@
       <div class="result-icon" id="resultIcon"></div>
       <div class="result-title">评估已完成</div>
       <div class="risk-badge" id="riskBadge"></div>
+
+      <!-- Score details -->
+      <div class="score-details" id="scoreDetails">
+        <h3>评分详情</h3>
+        <div class="score-grid">
+          <div class="score-item">
+            <div class="score-label">意念严重度</div>
+            <div class="score-value" id="severityScore">-</div>
+            <div class="score-desc" id="severityDesc"></div>
+          </div>
+          <div class="score-item">
+            <div class="score-label">意念强度</div>
+            <div class="score-value" id="intensityScore">-</div>
+            <div class="score-desc" id="intensityDesc"></div>
+          </div>
+          <div class="score-item">
+            <div class="score-label">致死性</div>
+            <div class="score-value" id="lethalityScore">-</div>
+            <div class="score-desc" id="lethalityDesc"></div>
+          </div>
+        </div>
+        <div class="intensity-breakdown" id="intensityBreakdown"></div>
+      </div>
+
       <div class="result-advice" id="resultAdvice">
         <h3>处理建议</h3>
         <p id="resultAdviceText"></p>
@@ -1076,23 +1143,89 @@
     }
   }
 
+  // Compute severity score
+  function computeSeverity() {
+    const a = state.answers;
+    if (a.i5 === true) return { score: 5, name: '有计划有意图' };
+    if (a.i4 === true) return { score: 4, name: '有意图无计划' };
+    if (a.i3 === true) return { score: 3, name: '有方法' };
+    if (a.i2 === true) return { score: 2, name: '非特定意念' };
+    if (a.i1 === true) return { score: 1, name: '渴望死亡' };
+    return { score: 0, name: '无自杀意念' };
+  }
+
+  // Compute intensity total and breakdown
+  function computeIntensity() {
+    const i = state.intensity;
+    if (state.answers.i1 !== true) return { total: 0, level: '不适用', breakdown: {} };
+    const total = (i.frequency || 0) + (i.duration || 0) + (i.controllability || 0) + (i.deterrents || 0) + (i.reason || 0);
+    let level = '低强度';
+    if (total >= 20) level = '高强度';
+    else if (total >= 15) level = '较高强度';
+    else if (total >= 10) level = '中等强度';
+    return {
+      total,
+      level,
+      breakdown: {
+        '频率': i.frequency || 0,
+        '持续时间': i.duration || 0,
+        '可控性': i.controllability || 0,
+        '阻遏因素': i.deterrents || 0,
+        '行动倾向': i.reason || 0
+      }
+    };
+  }
+
   // Show result
   function showResult() {
     document.getElementById('loadingOverlay').classList.remove('active');
     document.getElementById('progressBar').style.display = 'none';
 
     const risk = computeRisk();
+    const severity = computeSeverity();
+    const intensity = computeIntensity();
+    const lethality = computeLethality();
+
     const icon = document.getElementById('resultIcon');
     const badge = document.getElementById('riskBadge');
     const adviceText = document.getElementById('resultAdviceText');
 
-    const icons = { critical: '⚠️', high: '🚨', medium: '⚡', low: '🛡️', none: '✅' };
+    const icons = { critical: '⚠️', high: '🚨', medium: '', low: '🛡️', none: '✅' };
     const classes = { critical: 'risk-critical', high: 'risk-high', medium: 'risk-medium', low: 'risk-low', none: 'risk-low' };
 
     icon.textContent = icons[risk.level] || '✅';
     badge.textContent = '风险等级：' + risk.label;
     badge.className = 'risk-badge ' + (classes[risk.level] || 'risk-low');
     adviceText.textContent = risk.advice;
+
+    // Fill score details
+    document.getElementById('severityScore').textContent = severity.score + '/5';
+    document.getElementById('severityDesc').textContent = severity.name;
+
+    document.getElementById('intensityScore').textContent = intensity.total + '/25';
+    document.getElementById('intensityDesc').textContent = intensity.level;
+
+    document.getElementById('lethalityScore').textContent = lethality + '/5';
+    let lethalityDesc = '无';
+    if (lethality >= 5) lethalityDesc = '极高';
+    else if (lethality >= 4) lethalityDesc = '高';
+    else if (lethality >= 3) lethalityDesc = '中等';
+    else if (lethality >= 2) lethalityDesc = '低';
+    else if (lethality >= 1) lethalityDesc = '极低';
+    document.getElementById('lethalityDesc').textContent = lethalityDesc;
+
+    // Fill intensity breakdown
+    const breakdownEl = document.getElementById('intensityBreakdown');
+    if (intensity.total > 0) {
+      let html = '<h4>意念强度分项</h4>';
+      for (const [label, value] of Object.entries(intensity.breakdown)) {
+        html += '<div class="intensity-row"><span class="label">' + label + '</span><span class="value">' + value + ' 分</span></div>';
+      }
+      html += '<div class="intensity-total"><span class="label">总分</span><span class="value">' + intensity.total + ' / 25 分</span></div>';
+      breakdownEl.innerHTML = html;
+    } else {
+      breakdownEl.innerHTML = '<div style="text-align:center; color:var(--gray-400); font-size:13px; padding:8px 0;">筛查阴性，无强度评估</div>';
+    }
 
     showPage('pageResult');
   }
