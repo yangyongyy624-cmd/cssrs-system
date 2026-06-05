@@ -96,6 +96,10 @@ body {
   min-height: 100vh;
   min-height: 100dvh;
   padding: 40px 20px;
+  background: var(--bg);
+  position: fixed;
+  inset: 0;
+  z-index: 200;
 }
 .pin-view.active { display: flex; }
 .pin-lock-icon {
@@ -329,7 +333,7 @@ body {
 </div>
 
 <!-- View 0: PIN Login -->
-<div class="pin-view active" id="view-pin">
+<div class="pin-view" id="view-pin" style="display:none;">
   <div class="pin-lock-icon">🔐</div>
   <div class="pin-title">医生准入验证</div>
   <div class="pin-subtitle">请输入您的4位准入码（输入一次即可，下次自动登录）</div>
@@ -482,10 +486,8 @@ function authFetch(url, opts) {
 }
 
 function logout(msg) {
-  doctorPIN = '';
-  doctorName = '';
-  Storage.remove('cssrs_doctor_pin');
-  Storage.remove('cssrs_doctor_name');
+  // Don't clear localStorage — just show PIN page. Next visit auto-logs in.
+  // To truly log out, use ?reset=1 in URL
   if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
   showPINView(msg);
 }
@@ -493,7 +495,9 @@ function logout(msg) {
 // ── PIN View ──
 function showPINView(errorMsg) {
   document.getElementById('app-header').style.display = 'none';
-  document.getElementById('view-pin').classList.add('active');
+  var pinView = document.getElementById('view-pin');
+  pinView.classList.add('active');
+  pinView.style.setProperty('display', 'flex', 'important');
   document.querySelectorAll('.view').forEach(function(v) { v.classList.remove('active'); v.style.display = 'none'; });
   document.getElementById('fab').style.display = 'none';
 
@@ -586,6 +590,11 @@ function submitPIN() {
 
 // ── Navigation ──
 function enterApp() {
+  // Hide PIN login view completely (use !important to override CSS class)
+  var pinView = document.getElementById('view-pin');
+  pinView.classList.remove('active');
+  pinView.style.setProperty('display', 'none', 'important');
+
   document.getElementById('app-header').style.display = 'flex';
   document.getElementById('header-title-text').textContent = 'C-SSRS · ' + doctorName;
   showView('list');
