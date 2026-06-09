@@ -98,7 +98,7 @@ sudo nano /etc/nginx/conf.d/cssrs.conf
 
 ```nginx
 server {
-    listen 8888;
+    listen PORT;
     server_name _;
 
     location / {
@@ -120,7 +120,7 @@ sudo systemctl restart nginx
 
 **腾讯云轻量服务器**:
 1. 控制台 → 选择服务器 → 防火墙
-2. 添加规则: TCP:22, TCP:8888
+2. 添加规则: TCP:22, TCP:PORT
 
 ---
 
@@ -236,7 +236,7 @@ ssh ubuntu@YOUR_SERVER_IP "sudo kill <PID>"       # 杀掉
 
 **原因**:
 1. 微信内置浏览器会拦截外部链接 → 用系统相机扫码
-2. 防火墙未开放 8888 → 检查腾讯云控制台
+2. 防火墙未开放 PORT → 检查腾讯云控制台
 3. SSH 隧道断开 → 重新建立隧道
 
 ### Q: 502 Bad Gateway
