@@ -5,8 +5,8 @@
 ## 架构概览
 
 ```
-患者手机(流量) → 云端网关(8888) → SSH隧道(8889) → 本地电脑(8000)
-医生手机(流量) → 云端网关(8888) → SSH隧道(8889) → 本地电脑(8000)
+患者手机(流量) → 云端网关(82.156.238.242:8888) → SSH隧道(8889) → 本地电脑(8000)
+医生手机(流量) → 云端网关(82.156.238.242:8888) → SSH隧道(8889) → 本地电脑(8000)
 ```
 
 | 组件 | 位置 | 功能 |
@@ -21,9 +21,7 @@
 |------|------|------|
 | 8888 | 云端网关 (公开访问) | 入站 |
 | 8889 | SSH 反向隧道 (内部) | 云端内部 |
-| 8890 | TDM 系统 (公开访问) | 入站 |
 | 8000 | 本地 C-SSRS 服务 | 本地 |
-| 8001 | 本地 TDM 服务 | 本地 |
 | 22 | SSH | 入站 |
 
 ---
@@ -82,7 +80,7 @@ sudo systemctl start cssrs-local
 ### 2.1 服务器要求
 
 - Ubuntu 22.04+ (推荐腾讯云轻量，1核1G即可)
-- 开放防火墙: 端口 22, 8888, 8890
+- 开放防火墙: 端口 22, 8888
 
 ### 2.2 安装 Nginx
 
@@ -95,7 +93,6 @@ sudo apt install -y nginx
 ### 2.3 配置 Nginx
 
 ```bash
-# C-SSRS 网关配置
 sudo nano /etc/nginx/conf.d/cssrs.conf
 ```
 
@@ -115,27 +112,6 @@ server {
 ```
 
 ```bash
-# TDM 网关配置
-sudo nano /etc/nginx/conf.d/tdm.conf
-```
-
-```nginx
-server {
-    listen 8890;
-    server_name _;
-
-    location / {
-        proxy_pass http://127.0.0.1:8891;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
-
-```bash
-# 验证并重启
 sudo nginx -t
 sudo systemctl restart nginx
 ```
@@ -144,7 +120,7 @@ sudo systemctl restart nginx
 
 **腾讯云轻量服务器**:
 1. 控制台 → 选择服务器 → 防火墙
-2. 添加规则: TCP:22, TCP:8888, TCP:8890
+2. 添加规则: TCP:22, TCP:8888
 
 ---
 
@@ -153,8 +129,7 @@ sudo systemctl restart nginx
 ### 3.1 原理
 
 ```
-云端 :8889  →  SSH 反向隧道  →  本地 :8000 (C-SSRS)
-云端 :8891  →  SSH 反向隧道  →  本地 :8001 (TDM)
+云端 :8889  →  SSH 反向隧道  →  本地 :8000
 ```
 
 ### 3.2 配置免密登录
@@ -170,7 +145,6 @@ ssh-copy-id ubuntu@YOUR_SERVER_IP
 ### 3.3 启动隧道
 
 ```bash
-# C-SSRS 隧道
 ssh -fN \
   -o ServerAliveInterval=60 \
   -o ServerAliveCountMax=3 \
@@ -178,22 +152,13 @@ ssh -fN \
   -o ExitOnForwardFailure=yes \
   -R 8889:127.0.0.1:8000 \
   ubuntu@YOUR_SERVER_IP
-
-# TDM 隧道
-ssh -fN \
-  -o ServerAliveInterval=60 \
-  -o ServerAliveCountMax=3 \
-  -o StrictHostKeyChecking=no \
-  -o ExitOnForwardFailure=yes \
-  -R 8891:127.0.0.1:8001 \
-  ubuntu@YOUR_SERVER_IP
 ```
 
 ### 3.4 验证隧道
 
 ```bash
 # 在云端服务器上执行
-ssh ubuntu@YOUR_SERVER_IP "ss -tlnp | grep -E '8889|8891'"
+ssh ubuntu@YOUR_SERVER_IP "ss -tlnp | grep 8889"
 ```
 
 ### 3.5 开机自启 (macOS launchd)
@@ -246,9 +211,6 @@ curl -s -o /dev/null -w "管理后台: HTTP %{http_code}\n" http://YOUR_SERVER_I
 
 # 4. 验证医生入口二维码页
 curl -s -o /dev/null -w "二维码页: HTTP %{http_code}\n" http://YOUR_SERVER_IP:8888/doctor-qr
-
-# 5. 验证 TDM 系统
-curl -s -o /dev/null -w "TDM: HTTP %{http_code}\n" http://YOUR_SERVER_IP:8890/
 ```
 
 ---
@@ -262,7 +224,7 @@ curl -s -o /dev/null -w "TDM: HTTP %{http_code}\n" http://YOUR_SERVER_IP:8890/
 
 ### Q: SSH 隧道建立失败
 
-**原因**: 云端端口被旧的 sshd 子进程占用。
+**原因**: 云端 8889 端口被旧的 sshd 子进程占用。
 **解决**:
 ```bash
 ssh ubuntu@YOUR_SERVER_IP "sudo lsof -i :8889"   # 找到 PID
@@ -276,18 +238,6 @@ ssh ubuntu@YOUR_SERVER_IP "sudo kill <PID>"       # 杀掉
 1. 微信内置浏览器会拦截外部链接 → 用系统相机扫码
 2. 防火墙未开放 8888 → 检查腾讯云控制台
 3. SSH 隧道断开 → 重新建立隧道
-
-### Q: 医生看不到患者数据
-
-**原因**:
-1. 医生准入码错误或被撤销
-2. 医生只能看到自己创建的评估，看不到其他医生的数据
-3. SSH 隧道断开导致数据未同步
-
-**解决**:
-1. 检查准入码是否正确
-2. 联系管理员重新生成准入码
-3. 验证 SSH 隧道状态
 
 ### Q: 502 Bad Gateway
 
@@ -305,7 +255,6 @@ ssh ubuntu@YOUR_SERVER_IP "sudo kill <PID>"       # 杀掉
 | 文件 | 说明 | 是否公开 |
 |------|------|----------|
 | `backend/cssrs.db` | SQLite 数据库（本地），含所有评估数据 | ❌ 加入 .gitignore |
-| `backend/cssrs_cloud.db` | SQLite 数据库（云端），仅含 session + 医生 PIN | ❌ 加入 .gitignore |
 | `logs/` | 运行日志 | ❌ 加入 .gitignore |
 | `.env` | 环境变量 (如有) | ❌ 加入 .gitignore |
 | `.env.example` | 配置模板 | ✅ 公开 |
