@@ -414,7 +414,7 @@ def set_admin_pin(new_pin: str, old_pin: Optional[str] = None) -> dict:
             ).fetchone()
             if not row or not row["is_active"]:
                 return {"error": "旧密码错误"}
-            # Revoke old PIN and insert new one
+            # Revoke old PIN
             conn.execute(
                 "UPDATE cssrs_admin_pins SET is_active = 0, revoked_at = datetime('now') WHERE pin = ?",
                 (old_pin,),
@@ -426,6 +426,9 @@ def set_admin_pin(new_pin: str, old_pin: Optional[str] = None) -> dict:
             ).fetchone()
             if existing:
                 return {"error": "管理员已配置，请使用旧密码修改"}
+
+        # Delete any inactive record with the same PIN (allow reusing old PINs)
+        conn.execute("DELETE FROM cssrs_admin_pins WHERE pin = ? AND is_active = 0", (new_pin,))
 
         conn.execute("INSERT INTO cssrs_admin_pins (pin) VALUES (?)", (new_pin,))
         conn.commit()

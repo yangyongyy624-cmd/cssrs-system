@@ -323,35 +323,6 @@ body {
   font-weight:600; cursor:pointer;
 }
 .toggle-select-btn:active { background:#E2E8F0; }
-
-/* ── Change password modal ── */
-.modal-overlay {
-  display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5);
-  z-index:1000; align-items:center; justify-content:center;
-}
-.modal-overlay.show { display:flex; }
-.modal-card {
-  background:var(--card); border-radius:var(--radius); padding:24px 20px;
-  width:90%; max-width:320px; box-shadow:0 20px 60px rgba(0,0,0,0.3);
-}
-.modal-card h3 { font-size:18px; font-weight:700; margin-bottom:16px; text-align:center; }
-.modal-input {
-  width:100%; padding:12px 14px; border:1.5px solid var(--border); border-radius:10px;
-  font-size:15px; font-family:inherit; background:var(--bg); margin-bottom:12px;
-  text-align:center; letter-spacing:4px;
-}
-.modal-input:focus { outline:none; border-color:var(--primary); background:white; }
-.modal-error { color:var(--danger); font-size:13px; min-height:18px; margin-bottom:12px; text-align:center; }
-.modal-btn-row { display:flex; gap:10px; }
-.modal-btn {
-  flex:1; padding:12px; border:none; border-radius:10px; font-size:14px;
-  font-weight:600; cursor:pointer; font-family:inherit;
-}
-.modal-btn.primary { background:var(--primary); color:white; }
-.modal-btn.primary:active { background:var(--primary-dark); }
-.modal-btn.secondary { background:var(--bg); color:var(--text); border:1.5px solid var(--border); }
-.modal-btn.secondary:active { background:#E2E8F0; }
-
 </style>
 </head>
 <body>
@@ -438,22 +409,6 @@ body {
 </div>
 </div>
 
-
-<!-- Change Password Modal -->
-<div class="modal-overlay" id="change-password-modal">
-  <div class="modal-card">
-    <h3>修改管理密码</h3>
-    <input class="modal-input" id="old-password" type="password" maxlength="6" inputmode="numeric" placeholder="旧密码">
-    <input class="modal-input" id="new-password" type="password" maxlength="6" inputmode="numeric" placeholder="新密码 (4-6位)">
-    <input class="modal-input" id="confirm-password" type="password" maxlength="6" inputmode="numeric" placeholder="确认新密码">
-    <div class="modal-error" id="password-error"></div>
-    <div class="modal-btn-row">
-      <button class="modal-btn secondary" onclick="closeChangePassword()">取消</button>
-      <button class="modal-btn primary" onclick="changeAdminPassword()">确认修改</button>
-    </div>
-  </div>
-</div>
-
 <div class="toast" id="toast"></div>
 
 <script>
@@ -523,57 +478,6 @@ function logoutAdmin() {
   // Re-show lock view
   showView('lock-view');
   initPinInputs('admin-pin-inputs', 'admin-pin-submit');
-}
-
-// ── Change admin password ──
-function showChangePassword() {
-  var modal = document.getElementById('change-password-modal');
-  if (modal) {
-    modal.style.display = 'flex';
-    document.getElementById('old-password').value = '';
-    document.getElementById('new-password').value = '';
-    document.getElementById('confirm-password').value = '';
-    document.getElementById('password-error').textContent = '';
-    document.getElementById('old-password').focus();
-  }
-}
-
-function closeChangePassword() {
-  var modal = document.getElementById('change-password-modal');
-  if (modal) modal.style.display = 'none';
-}
-
-function changeAdminPassword() {
-  var oldPin = document.getElementById('old-password').value.trim();
-  var newPin = document.getElementById('new-password').value.trim();
-  var confirmPin = document.getElementById('confirm-password').value.trim();
-  var errorEl = document.getElementById('password-error');
-
-  if (!oldPin) { errorEl.textContent = '请输入旧密码'; return; }
-  if (!newPin || newPin.length < 4) { errorEl.textContent = '新密码至少4位'; return; }
-  if (newPin !== confirmPin) { errorEl.textContent = '两次输入的新密码不一致'; return; }
-  if (!/^\d+$/.test(newPin)) { errorEl.textContent = '密码只能包含数字'; return; }
-
-  fetch(API + '/api/admin/pins/set', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Admin-PIN': ADMIN_PIN
-    },
-    body: JSON.stringify({new_pin: newPin, old_pin: oldPin})
-  })
-  .then(function(res) {
-    if (!res.ok) return res.json().then(function(e) { throw new Error(e.detail || e.error || 'HTTP ' + res.status); });
-    return res.json();
-  })
-  .then(function() {
-    toast('✅ 管理密码已修改，请使用新密码重新登录');
-    closeChangePassword();
-    logoutAdmin();
-  })
-  .catch(function(e) {
-    errorEl.textContent = ' ' + e.message;
-  });
 }
 
 // ── Doctor PIN management ──
