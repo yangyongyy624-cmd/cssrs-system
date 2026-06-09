@@ -2,8 +2,8 @@
 
 > C-SSRS 电子评估系统 — 云端操作接口
 > 
-> **服务器**：82.156.238.242
-> **管理员密码**：8888（默认，可修改）
+> **服务器**：YOUR_SERVER_IP
+> **管理员密码**：4-6 位数字（默认，可修改）
 > **医生准入码**：由管理员创建
 
 ---
@@ -23,8 +23,8 @@ C-SSRS（Columbia Suicide Severity Rating Scale）电子评估系统。云端服
 ## 系统架构
 
 ```
-患者手机(流量) → 云端网关(82.156.238.242:8888) → SSH隧道(8889) → 本地电脑(8000)
-医生手机(流量) → 云端网关(82.156.238.242:8888) → SSH隧道(8889) → 本地电脑(8000)
+患者手机(流量) → 云端网关(YOUR_SERVER_IP:8888) → SSH隧道(8889) → 本地电脑(8000)
+医生手机(流量) → 云端网关(YOUR_SERVER_IP:8888) → SSH隧道(8889) → 本地电脑(8000)
 ```
 
 ### 网络端口
@@ -72,7 +72,7 @@ C-SSRS（Columbia Suicide Severity Rating Scale）电子评估系统。云端服
 ### 1. 生成患者评估（二维码）
 
 ```bash
-curl -s -X POST http://82.156.238.242:8888/api/sessions \
+curl -s -X POST http://YOUR_SERVER_IP:8888/api/sessions \
   -H "Content-Type: application/json" \
   -H "X-Doctor-PIN: <PIN>" \
   -d '{"patient_id":"张三","patient_phone":"138****0000","version":"baseline"}'
@@ -81,7 +81,7 @@ curl -s -X POST http://82.156.238.242:8888/api/sessions \
 ### 2. 医生 PIN 认证
 
 ```bash
-curl -s -X POST http://82.156.238.242:8888/api/auth/login \
+curl -s -X POST http://YOUR_SERVER_IP:8888/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"pin":"<4位数字>"}'
 ```
@@ -89,7 +89,7 @@ curl -s -X POST http://82.156.238.242:8888/api/auth/login \
 ### 3. 查看医生自己的评估数据
 
 ```bash
-curl -s -H "X-Doctor-PIN: <PIN>" http://82.156.238.242:8888/api/doctor/report
+curl -s -H "X-Doctor-PIN: <PIN>" http://YOUR_SERVER_IP:8888/api/doctor/report
 ```
 
 **注意**：`/api/doctor/report` 只返回该医生创建的评估。
@@ -97,7 +97,7 @@ curl -s -H "X-Doctor-PIN: <PIN>" http://82.156.238.242:8888/api/doctor/report
 ### 4. 查看完整报告
 
 ```bash
-curl -s -H "X-Doctor-PIN: <PIN>" http://82.156.238.242:8888/api/report/<SESSION_ID>
+curl -s -H "X-Doctor-PIN: <PIN>" http://YOUR_SERVER_IP:8888/api/report/<SESSION_ID>
 ```
 
 含患者答卷原文和全部评分。
@@ -105,14 +105,14 @@ curl -s -H "X-Doctor-PIN: <PIN>" http://82.156.238.242:8888/api/report/<SESSION_
 ### 5. 管理员查看所有评估
 
 ```bash
-curl -s -H "X-Admin-PIN: <管理密码>" http://82.156.238.242:8888/api/admin/report
+curl -s -H "X-Admin-PIN: <管理密码>" http://YOUR_SERVER_IP:8888/api/admin/report
 ```
 
 ### 6. 管理医生准入码
 
 **创建医生 PIN：**
 ```bash
-curl -s -X POST http://82.156.238.242:8888/api/admin/pins \
+curl -s -X POST http://YOUR_SERVER_IP:8888/api/admin/pins \
   -H "Content-Type: application/json" \
   -H "X-Admin-PIN: <管理密码>" \
   -d '{"doctor_name":"医生名字"}'
@@ -120,12 +120,12 @@ curl -s -X POST http://82.156.238.242:8888/api/admin/pins \
 
 **查看所有 PIN：**
 ```bash
-curl -s -H "X-Admin-PIN: <管理密码>" http://82.156.238.242:8888/api/admin/pins
+curl -s -H "X-Admin-PIN: <管理密码>" http://YOUR_SERVER_IP:8888/api/admin/pins
 ```
 
 **撤销医生 PIN：**
 ```bash
-curl -s -X DELETE http://82.156.238.242:8888/api/admin/pins/<PIN> \
+curl -s -X DELETE http://YOUR_SERVER_IP:8888/api/admin/pins/<PIN> \
   -H "X-Admin-PIN: <管理密码>"
 ```
 
@@ -167,7 +167,7 @@ curl -s -X DELETE http://82.156.238.242:8888/api/admin/pins/<PIN> \
 ## 服务状态检查
 
 ```bash
-curl -s -o /dev/null -w "%{http_code}" http://82.156.238.242:8888/
+curl -s -o /dev/null -w "%{http_code}" http://YOUR_SERVER_IP:8888/
 ```
 非 200 则检查 SSH 隧道状态。
 
@@ -178,7 +178,7 @@ curl -s -o /dev/null -w "%{http_code}" http://82.156.238.242:8888/
 - **不要用浏览器工具**，直接用 curl
 - 患者评估码 = 6 位字母数字
 - 医生访问码 = 4 位数字 PIN
-- 管理密码 = 4-6 位数字（默认 8888）
+- 管理密码 = 4-6 位数字
 - 评估数据仅存本地，云端不保存任何患者数据
 - 医生只能看到自己的数据，管理员可以看到全部
 - 管理员可以自由修改密码
