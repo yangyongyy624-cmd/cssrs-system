@@ -5,13 +5,13 @@
 ## 架构概览
 
 ```
-患者手机(流量) → 云端网关(YOUR_SERVER_IP:8888) → SSH隧道(8889) → 本地电脑(8000)
-医生手机(流量) → 云端网关(YOUR_SERVER_IP:8888) → SSH隧道(8889) → 本地电脑(8000)
+患者手机(流量) → 云端网关(YOUR_SERVER_IP:PORT) → SSH隧道(8889) → 本地电脑(8000)
+医生手机(流量) → 云端网关(YOUR_SERVER_IP:PORT) → SSH隧道(8889) → 本地电脑(8000)
 ```
 
 | 组件 | 位置 | 功能 |
 |------|------|------|
-| 云端网关 | Ubuntu 服务器 (Nginx 8888) | 纯转发，不存储任何评估数据 |
+| 云端网关 | Ubuntu 服务器 (Nginx PORT) | 纯转发，不存储任何评估数据 |
 | SSH 隧道 | 自动建立 | 加密传输 (云端 8889 → 本地 8000) |
 | 本地服务 | Mac/PC (FastAPI 8000) | 数据存储、评分计算、报告生成 |
 
@@ -19,7 +19,7 @@
 
 | 端口 | 用途 | 方向 |
 |------|------|------|
-| 8888 | 云端网关 (公开访问) | 入站 |
+| PORT | 云端网关 (公开访问) | 入站 |
 | 8889 | SSH 反向隧道 (内部) | 云端内部 |
 | 8000 | 本地 C-SSRS 服务 | 本地 |
 | 22 | SSH | 入站 |
@@ -80,7 +80,7 @@ sudo systemctl start cssrs-local
 ### 2.1 服务器要求
 
 - Ubuntu 22.04+ (推荐腾讯云轻量，1核1G即可)
-- 开放防火墙: 端口 22, 8888
+- 开放防火墙: 端口 22, PORT
 
 ### 2.2 安装 Nginx
 
@@ -180,14 +180,14 @@ launchctl load ~/Library/LaunchAgents/com.cssrs.tunnel.plist
 python3 -c "
 import qrcode
 qr = qrcode.QRCode(version=1, box_size=10, border=4)
-qr.add_data('http://YOUR_SERVER_IP:8888/')
+qr.add_data('http://YOUR_SERVER_IP:PORT/')
 qr.make(fit=True)
 img = qr.make_image(fill_color='black', back_color='white')
 img.save('doctor-entry-qr.png')
 "
 ```
 
-生成后可访问 `http://YOUR_SERVER_IP:8888/doctor-qr` 查看，或直接截图保存。
+生成后可访问 `http://YOUR_SERVER_IP:PORT/doctor-qr` 查看，或直接截图保存。
 
 ### 4.2 患者二维码
 
@@ -201,16 +201,16 @@ img.save('doctor-entry-qr.png')
 
 ```bash
 # 1. 验证入口页
-curl -s -o /dev/null -w "入口页: HTTP %{http_code}\n" http://YOUR_SERVER_IP:8888/
+curl -s -o /dev/null -w "入口页: HTTP %{http_code}\n" http://YOUR_SERVER_IP:PORT/
 
 # 2. 验证医生端
-curl -s -o /dev/null -w "医生端: HTTP %{http_code}\n" http://YOUR_SERVER_IP:8888/mobile
+curl -s -o /dev/null -w "医生端: HTTP %{http_code}\n" http://YOUR_SERVER_IP:PORT/mobile
 
 # 3. 验证管理后台
-curl -s -o /dev/null -w "管理后台: HTTP %{http_code}\n" http://YOUR_SERVER_IP:8888/admin
+curl -s -o /dev/null -w "管理后台: HTTP %{http_code}\n" http://YOUR_SERVER_IP:PORT/admin
 
 # 4. 验证医生入口二维码页
-curl -s -o /dev/null -w "二维码页: HTTP %{http_code}\n" http://YOUR_SERVER_IP:8888/doctor-qr
+curl -s -o /dev/null -w "二维码页: HTTP %{http_code}\n" http://YOUR_SERVER_IP:PORT/doctor-qr
 ```
 
 ---
@@ -246,7 +246,7 @@ ssh ubuntu@YOUR_SERVER_IP "sudo kill <PID>"       # 杀掉
 
 ### Q: 如何打印医生入口二维码？
 
-访问 `http://YOUR_SERVER_IP:8888/doctor-qr`，截图或打印该页面即可。
+访问 `http://YOUR_SERVER_IP:PORT/doctor-qr`，截图或打印该页面即可。
 
 ---
 
