@@ -367,6 +367,8 @@ body {
     <input class="pin-digit" maxlength="1" data-idx="1" autocomplete="off" inputmode="numeric" pattern="[0-9]">
     <input class="pin-digit" maxlength="1" data-idx="2" autocomplete="off" inputmode="numeric" pattern="[0-9]">
     <input class="pin-digit" maxlength="1" data-idx="3" autocomplete="off" inputmode="numeric" pattern="[0-9]">
+    <input class="pin-digit" maxlength="1" data-idx="4" autocomplete="off" inputmode="numeric" pattern="[0-9]">
+    <input class="pin-digit" maxlength="1" data-idx="5" autocomplete="off" inputmode="numeric" pattern="[0-9]">
   </div>
   <div class="pin-error" id="admin-pin-error"></div>
   <button class="lock-btn" id="admin-pin-submit" disabled onclick="submitAdminPIN()">验证</button>
@@ -491,7 +493,7 @@ function showAdminUI() {
 // ── Admin login (verify against database) ──
 function submitAdminPIN() {
   var pin = getPinValue('admin-pin-inputs');
-  if (pin.length < 4) return;
+  if (pin.length < 4 || pin.length > 6) return;
 
   fetch(API + '/api/admin/auth', {
     method: 'POST',
