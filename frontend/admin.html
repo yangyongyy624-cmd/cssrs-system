@@ -557,7 +557,9 @@ async function loadAssessments() {
   var listEl = document.getElementById('assessment-summary-list');
   listEl.innerHTML = '<div class="empty-assessments"><div class="icon">📋</div><div>加载中...</div></div>';
   try {
-    var res = await fetch(API + '/api/report');
+    var res = await fetch(API + '/api/admin/report', {
+      headers: { 'X-Admin-PIN': ADMIN_PIN }
+    });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     var data = await res.json();
     currentAssessments = data.assessments || [];

@@ -399,6 +399,24 @@ def get_report(session_id: str, request: Request):
     return row
 
 
+@app.get("/api/admin/report")
+def admin_list_reports(request: Request):
+    """Admin endpoint — returns all assessments from all doctors."""
+    require_admin(request)
+    rows = list_assessments()
+    return {"assessments": rows}
+
+
+@app.get("/api/admin/report/{session_id}")
+def admin_get_report(session_id: str, request: Request):
+    """Admin endpoint — returns single assessment detail."""
+    require_admin(request)
+    row = get_assessment(session_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Assessment not found")
+    return row
+
+
 @app.get("/api/patient/{patient_id}/history")
 def patient_history(patient_id: str):
     rows = get_patient_history(patient_id)
