@@ -980,6 +980,11 @@ function renderReport(data) {
   const severityName = data.severity_name || getSeverityName(severityScore);
   const intensityTotal = data.intensity_total ?? 0;
   const intensityLevel = data.intensity_level || '不适用';
+  const behaviorScore = (data.b1_actual_attempt ? 1 : 0) +
+                        (data.b2_interrupted ? 1 : 0) +
+                        (data.b3_aborted ? 1 : 0) +
+                        (data.b4_preparatory ? 1 : 0) +
+                        (data.b5_nssi ? 1 : 0);
   const behaviorPositive = data.behavior_positive || data.behavior_types_positive || [];
   const lethalityLevel = data.lethality_level ?? 0;
   const immediateActions = data.immediate_actions || [];
@@ -1000,7 +1005,7 @@ function renderReport(data) {
     <!-- Scoring Summary Card (research-oriented) -->
     <div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); color:white; border-radius:16px; padding:20px; margin-bottom:20px;">
       <div style="font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:1px; opacity:0.8; margin-bottom:12px;">C-SSRS 评分摘要（科研数据）</div>
-      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(120px, 1fr)); gap:16px;">
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(100px, 1fr)); gap:16px;">
         <div style="text-align:center;">
           <div style="font-size:32px; font-weight:800;">${severityScore ?? '-'}</div>
           <div style="font-size:11px; opacity:0.9;">意念严重度 (0-5)</div>
@@ -1008,6 +1013,10 @@ function renderReport(data) {
         <div style="text-align:center;">
           <div style="font-size:32px; font-weight:800;">${intensityTotal || '-'}</div>
           <div style="font-size:11px; opacity:0.9;">意念强度 (0-25)</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:32px; font-weight:800;">${behaviorScore}</div>
+          <div style="font-size:11px; opacity:0.9;">自杀行为 (0-5)</div>
         </div>
         <div style="text-align:center;">
           <div style="font-size:32px; font-weight:800;">${lethalityLevel || '-'}</div>

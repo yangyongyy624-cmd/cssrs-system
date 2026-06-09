@@ -5,15 +5,15 @@
 ## 架构概览
 
 ```
-患者手机 → 云端轻量网关 (Ubuntu) → SSH 隧道 → 本地 Mac/服务器 (数据存储)
-            仅转发,不存储                  加密传输              评分 + 归档
+患者手机(流量) → 云端网关(8888) → SSH隧道(8889) → 本地电脑(8000)
+医生手机(流量) → 云端网关(8888) → SSH隧道(8889) → 本地电脑(8000)
 ```
 
 | 组件 | 位置 | 功能 |
 |------|------|------|
-| 云端网关 | Ubuntu 服务器 (端口 8888) | 认证、转发、二维码生成 |
-| 本地服务 | Mac mini 或任意服务器 (端口 8000) | 数据存储、评分计算、报告生成 |
-| SSH 隧道 | 自动建立 | 加密传输评估数据 (云端 8889 → 本地 8000) |
+| 云端网关 | Ubuntu 服务器 (Nginx 8888) | 纯转发，不存储任何评估数据 |
+| SSH 隧道 | 自动建立 | 加密传输 (云端 8889 → 本地 8000) |
+| 本地服务 | Mac/PC (FastAPI 8000) | 数据存储、评分计算、报告生成 |
 
 ### 网络端口
 
@@ -21,7 +21,9 @@
 |------|------|------|
 | 8888 | 云端网关 (公开访问) | 入站 |
 | 8889 | SSH 反向隧道 (内部) | 云端内部 |
-| 8000 | 本地 FastAPI 服务 | 本地 |
+| 8890 | TDM 系统 (公开访问) | 入站 |
+| 8000 | 本地 C-SSRS 服务 | 本地 |
+| 8001 | 本地 TDM 服务 | 本地 |
 | 22 | SSH | 入站 |
 
 ---
@@ -80,46 +82,69 @@ sudo systemctl start cssrs-local
 ### 2.1 服务器要求
 
 - Ubuntu 22.04+ (推荐腾讯云轻量，1核1G即可)
-- 开放防火墙: 端口 22, 8888
+- 开放防火墙: 端口 22, 8888, 8890
 
-### 2.2 安装
+### 2.2 安装 Nginx
 
 ```bash
 ssh ubuntu@YOUR_SERVER_IP
-git clone https://github.com/yangyongyy624-cmd/cssrs-system.git
-cd cssrs-system
-python3 -m venv backend/.venv
-cd backend
-source .venv/bin/activate
-pip install -r requirements.txt
-mkdir -p ~/cssrs-system/logs
+sudo apt update
+sudo apt install -y nginx
 ```
 
-### 2.3 配置 systemd 服务
+### 2.3 配置 Nginx
 
 ```bash
-# 从本地拷贝
-scp scripts/cssrs-cloud.service ubuntu@YOUR_SERVER_IP:/tmp/
+# C-SSRS 网关配置
+sudo nano /etc/nginx/conf.d/cssrs.conf
+```
 
-# 在服务器上安装
-ssh ubuntu@YOUR_SERVER_IP
-sudo cp /tmp/cssrs-cloud.service /etc/systemd/system/
-sudo nano /etc/systemd/system/cssrs-cloud.service   # 检查路径
-sudo systemctl daemon-reload
-sudo systemctl enable cssrs-cloud
-sudo systemctl start cssrs-cloud
-sudo systemctl status cssrs-cloud
+```nginx
+server {
+    listen 8888;
+    server_name _;
+
+    location / {
+        proxy_pass http://127.0.0.1:8889;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+```bash
+# TDM 网关配置
+sudo nano /etc/nginx/conf.d/tdm.conf
+```
+
+```nginx
+server {
+    listen 8890;
+    server_name _;
+
+    location / {
+        proxy_pass http://127.0.0.1:8891;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+```bash
+# 验证并重启
+sudo nginx -t
+sudo systemctl restart nginx
 ```
 
 ### 2.4 防火墙设置
 
 **腾讯云轻量服务器**:
 1. 控制台 → 选择服务器 → 防火墙
-2. 添加规则: TCP:22, TCP:8888
-
-**腾讯云标准服务器 (安全组)**:
-1. VPC → 安全组 → 入站规则
-2. 添加: TCP:22, TCP:8888
+2. 添加规则: TCP:22, TCP:8888, TCP:8890
 
 ---
 
@@ -128,7 +153,8 @@ sudo systemctl status cssrs-cloud
 ### 3.1 原理
 
 ```
-云端 :8889  →  SSH 反向隧道  →  本地 :8000
+云端 :8889  →  SSH 反向隧道  →  本地 :8000 (C-SSRS)
+云端 :8891  →  SSH 反向隧道  →  本地 :8001 (TDM)
 ```
 
 ### 3.2 配置免密登录
@@ -141,15 +167,25 @@ ssh-keygen -t ed25519 -C "cssrs-tunnel"
 ssh-copy-id ubuntu@YOUR_SERVER_IP
 ```
 
-### 3.3 手动启动隧道
+### 3.3 启动隧道
 
 ```bash
+# C-SSRS 隧道
 ssh -fN \
-  -o GatewayPorts=yes \
   -o ServerAliveInterval=60 \
   -o ServerAliveCountMax=3 \
+  -o StrictHostKeyChecking=no \
   -o ExitOnForwardFailure=yes \
-  -R 0.0.0.0:8889:127.0.0.1:8000 \
+  -R 8889:127.0.0.1:8000 \
+  ubuntu@YOUR_SERVER_IP
+
+# TDM 隧道
+ssh -fN \
+  -o ServerAliveInterval=60 \
+  -o ServerAliveCountMax=3 \
+  -o StrictHostKeyChecking=no \
+  -o ExitOnForwardFailure=yes \
+  -R 8891:127.0.0.1:8001 \
   ubuntu@YOUR_SERVER_IP
 ```
 
@@ -157,49 +193,12 @@ ssh -fN \
 
 ```bash
 # 在云端服务器上执行
-curl -s http://127.0.0.1:8889/ -o /dev/null -w "%{http_code}"
+ssh ubuntu@YOUR_SERVER_IP "ss -tlnp | grep -E '8889|8891'"
 ```
 
 ### 3.5 开机自启 (macOS launchd)
 
-创建 `~/Library/LaunchAgents/com.cssrs.tunnel.plist`:
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>Label</key>
-    <string>com.cssrs.tunnel</string>
-    <key>ProgramArguments</key>
-    <array>
-        <string>/usr/bin/ssh</string>
-        <string>-fN</string>
-        <string>-o</string>
-        <string>GatewayPorts=yes</string>
-        <string>-o</string>
-        <string>ServerAliveInterval=60</string>
-        <string>-o</string>
-        <string>ServerAliveCountMax=3</string>
-        <string>-o</string>
-        <string>ExitOnForwardFailure=yes</string>
-        <string>-R</string>
-        <string>0.0.0.0:8889:127.0.0.1:8000</string>
-        <string>ubuntu@YOUR_SERVER_IP</string>
-    </array>
-    <key>RunAtLoad</key>
-    <true/>
-    <key>KeepAlive</key>
-    <dict><key>SuccessfulExit</key><false/></dict>
-    <key>ThrottleInterval</key>
-    <integer>30</integer>
-    <key>StandardOutPath</key>
-    <string>/path/to/cssrs-system/logs/tunnel.log</string>
-    <key>StandardErrorPath</key>
-    <string>/path/to/cssrs-system/logs/tunnel.err.log</string>
-</dict>
-</plist>
-```
+创建 `~/Library/LaunchAgents/com.cssrs.tunnel.plist`，配置 SSH 隧道参数。
 
 ```bash
 launchctl load ~/Library/LaunchAgents/com.cssrs.tunnel.plist
@@ -207,76 +206,49 @@ launchctl load ~/Library/LaunchAgents/com.cssrs.tunnel.plist
 
 ---
 
-## 第四部分：数据查看
+## 第四部分：二维码生成
 
-### 4.1 医生端网页 (浏览器)
+### 4.1 医生入口二维码
 
-医生通过浏览器访问云端网关，认证后可查看：
-
-1. **评估列表**：患者ID、**手机号**、日期、风险等级、意念严重度、意念强度
-2. **完整报告**（点击任意记录进入）：
-   - C-SSRS 评分摘要（意念严重度 0-5、意念强度 0-25、致死性 0-6、综合风险）
-   - **患者答卷原文**（意念出现时间、持续多久、自杀方法、地点、时机、意图强度、准备行为等）
-   - 自杀意念评估（5 维度分数）
-   - 自杀行为评估（阳性行为标记）
-   - 处理建议（即时干预列表）
-   - 随访计划
-   - 预警信号
-3. **手机号搜索**：输入至少 4 位手机号，搜索该患者所有历史评估记录
-
-### 4.2 OpenClaw 语音助手
-
-OpenClaw 调用云端 API 查看数据：
-
-```
-# 脱敏摘要（仅风险等级，适合日常巡查）
-GET /api/summary?limit=5
-返回: 患者ID + 风险等级 + 日期
-
-# 手机号搜索（输入至少4位）
-GET /api/search?phone=13800
-返回: 匹配的患者评估记录列表
-
-# 完整答卷（含所有文字内容）
-GET /api/report/{session_id}
-返回: 完整评分 + 患者填写的所有文字内容
-
-# 患者历史
-GET /api/patient/{patient_id}/history
-返回: 该患者所有历史评估记录
+```bash
+# 使用 Python qrcode 库生成
+python3 -c "
+import qrcode
+qr = qrcode.QRCode(version=1, box_size=10, border=4)
+qr.add_data('http://YOUR_SERVER_IP:8888/')
+qr.make(fit=True)
+img = qr.make_image(fill_color='black', back_color='white')
+img.save('doctor-entry-qr.png')
+"
 ```
 
-**数据访问权限说明：**
-- `/api/summary` — 脱敏摘要，仅返回风险等级，适合语音播报
-- `/api/search` — 按手机号搜索患者评估记录（部分匹配）
-- `/api/report/{id}` — 完整数据，含患者答卷原文，适合医生详细查看
-- 医生端网页 — 通过 PIN 认证后访问，可浏览列表、搜索和完整报告
+生成后可访问 `http://YOUR_SERVER_IP:8888/doctor-qr` 查看，或直接截图保存。
+
+### 4.2 患者二维码
+
+由医生端自动生成，每次新建评估时系统生成：
+- 患者二维码图片
+- 6 位访问码（备用）
 
 ---
 
-## 第五部分：端到端验证
+## 第五部分：系统验证
 
 ```bash
-# 1. 创建 session
-curl -s -X POST http://YOUR_SERVER_IP:8888/api/sessions \
-  -H "Content-Type: application/json" \
-  -d '{"patient_id":"deploy-test-001","patient_phone":"13800138000","version":"baseline"}'
+# 1. 验证入口页
+curl -s -o /dev/null -w "入口页: HTTP %{http_code}\n" http://YOUR_SERVER_IP:8888/
 
-# 2. 提交评估 (注意端点是 /api/assess，不是 /api/submit)
-curl -s -X POST "http://YOUR_SERVER_IP:8888/api/assess/{session_id}" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "ideation": {"i1_wish_dead":true,"i2_non_specific":true},
-    "intensity": {"frequency":2,"duration":1,"controllability":2,"deterrents":1,"reason":1},
-    "behavior": {"b1_actual_attempt":false,"b2_interrupted":false,"b3_aborted":false,"b4_preparatory":false,"b5_nssi":false},
-    "lethality": 0
-  }'
+# 2. 验证医生端
+curl -s -o /dev/null -w "医生端: HTTP %{http_code}\n" http://YOUR_SERVER_IP:8888/mobile
 
-# 3. 验证数据到达本地
-curl -s http://localhost:8000/api/summary?limit=1
+# 3. 验证管理后台
+curl -s -o /dev/null -w "管理后台: HTTP %{http_code}\n" http://YOUR_SERVER_IP:8888/admin
 
-# 4. 查看完整报告（含患者答卷原文）
-curl -s http://YOUR_SERVER_IP:8888/api/report/{session_id}
+# 4. 验证医生入口二维码页
+curl -s -o /dev/null -w "二维码页: HTTP %{http_code}\n" http://YOUR_SERVER_IP:8888/doctor-qr
+
+# 5. 验证 TDM 系统
+curl -s -o /dev/null -w "TDM: HTTP %{http_code}\n" http://YOUR_SERVER_IP:8890/
 ```
 
 ---
@@ -286,11 +258,11 @@ curl -s http://YOUR_SERVER_IP:8888/api/report/{session_id}
 ### Q: 本地服务频繁崩溃
 
 **原因**: 端口被占用或 venv 路径不正确。
-**解决**: 使用 `scripts/start-local.sh --daemon` 启动，脚本会自动清理旧进程。launchd plist 使用 `SuccessfulExit: false` + `ThrottleInterval: 30` 防止重启风暴。
+**解决**: 使用 `scripts/start-local.sh --daemon` 启动，脚本会自动清理旧进程。
 
 ### Q: SSH 隧道建立失败
 
-**原因**: 云端 8889 端口被旧的 sshd 子进程占用。
+**原因**: 云端端口被旧的 sshd 子进程占用。
 **解决**:
 ```bash
 ssh ubuntu@YOUR_SERVER_IP "sudo lsof -i :8889"   # 找到 PID
@@ -303,23 +275,28 @@ ssh ubuntu@YOUR_SERVER_IP "sudo kill <PID>"       # 杀掉
 **原因**:
 1. 微信内置浏览器会拦截外部链接 → 用系统相机扫码
 2. 防火墙未开放 8888 → 检查腾讯云控制台
-3. 云端服务未运行 → `sudo systemctl status cssrs-cloud`
+3. SSH 隧道断开 → 重新建立隧道
 
-### Q: 评估提交后数据丢失
+### Q: 医生看不到患者数据
 
-**原因**: SSH 隧道断开，云端无法推送到本地。
-**解决**: 数据会暂存在云端 SQLite 中，隧道恢复后手动重推。
+**原因**:
+1. 医生准入码错误或被撤销
+2. 医生只能看到自己创建的评估，看不到其他医生的数据
+3. SSH 隧道断开导致数据未同步
 
-### Q: 患者填写的文字内容在哪里看？
+**解决**:
+1. 检查准入码是否正确
+2. 联系管理员重新生成准入码
+3. 验证 SSH 隧道状态
 
-- **OpenClaw**：调用 `GET /api/report/{session_id}`，返回全部答卷原文
-- **医生端网页**：点击评估列表中的某条记录，报告页"患者答卷原文"区块显示所有文字内容
-- 注意：`/api/summary` 仅返回风险等级，不包含答卷原文
+### Q: 502 Bad Gateway
 
-### Q: launchd 服务 exit code -15
+**原因**: SSH 隧道断开，云端无法连接到本地服务。
+**解决**: 重新建立 SSH 隧道。
 
-**原因**: launchd 的 KeepAlive 在进程退出时立即重启，如果端口未释放会反复崩溃。
-**解决**: plist 中使用 `SuccessfulExit: false` + `ThrottleInterval: 30` 防止重启风暴。
+### Q: 如何打印医生入口二维码？
+
+访问 `http://YOUR_SERVER_IP:8888/doctor-qr`，截图或打印该页面即可。
 
 ---
 
@@ -327,8 +304,8 @@ ssh ubuntu@YOUR_SERVER_IP "sudo kill <PID>"       # 杀掉
 
 | 文件 | 说明 | 是否公开 |
 |------|------|----------|
-| `backend/cssrs.db` | SQLite 数据库（本地 Mac），含所有评估数据 | ❌ 加入 .gitignore |
-| `backend/cssrs_cloud.db` | SQLite 数据库（云端网关），仅含 session + 医生 PIN | ❌ 加入 .gitignore |
+| `backend/cssrs.db` | SQLite 数据库（本地），含所有评估数据 | ❌ 加入 .gitignore |
+| `backend/cssrs_cloud.db` | SQLite 数据库（云端），仅含 session + 医生 PIN | ❌ 加入 .gitignore |
 | `logs/` | 运行日志 | ❌ 加入 .gitignore |
 | `.env` | 环境变量 (如有) | ❌ 加入 .gitignore |
 | `.env.example` | 配置模板 | ✅ 公开 |

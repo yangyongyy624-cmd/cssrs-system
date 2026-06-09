@@ -17,7 +17,7 @@ def get_local_ip():
 LOCAL_IP = get_local_ip()
 LOCAL_PORT = 8000
 # Cloud gateway URL for QR codes and patient links (configured via environment variable)
-CLOUD_GATEWAY_URL = os.environ.get("CLOUD_GATEWAY_URL", "http://YOUR_SERVER:8888")
+CLOUD_GATEWAY_URL = os.environ.get("CLOUD_GATEWAY_URL", "http://YOUR_SERVER_IP:8888")
 from datetime import datetime
 from pathlib import Path
 
@@ -35,10 +35,11 @@ from scorer import (
 )
 from models import SessionCreate, AssessRequest, AssessmentResponse
 from database import (
-    init_db, save_assessment, get_assessment, list_assessments, get_patient_history,
+    init_db, save_assessment, get_assessment, list_assessments, list_assessments_by_doctor, get_patient_history,
     create_session, get_session, resolve_access_code, search_by_phone,
 )
 from database import init_doctor_pins_table, verify_doctor_pin, create_doctor_pin, revoke_doctor_pin, list_doctor_pins
+from database import init_admin_pins_table, verify_admin_pin, has_admin_pin, set_admin_pin
 
 app = FastAPI(title="C-SSRS Electronic Assessment System")
 
@@ -61,20 +62,65 @@ if frontend_dir.exists():
 def startup():
     init_db()
     init_doctor_pins_table()
+    admin_pin = init_admin_pins_table()
+    if admin_pin:
+        print(f"\n{'='*60}")
+        print(f"  C-SSRS 管理员密码已生成: {admin_pin}")
+        print(f"  请访问 /admin 使用此密码进入管理后台")
+        print(f"  首次进入后可在管理页面修改密码")
+        print(f"{'='*60}\n")
 
 
 # Also init on import (for testing and direct script usage)
 init_db()
 init_doctor_pins_table()
+# Don't bootstrap admin PIN on import — only on startup
 
 
 # ── Page routes ──
 
 @app.get("/")
-def serve_doctor_page():
-    """Redirect to mobile doctor page which requires PIN authentication"""
-    from fastapi.responses import RedirectResponse
-    return RedirectResponse(url="/mobile")
+def serve_landing_page():
+    """Landing page with role selection (doctor or admin)"""
+    from fastapi.responses import FileResponse
+    landing_html = frontend_dir / "landing.html"
+    if landing_html.exists():
+        return FileResponse(str(landing_html),
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+    raise HTTPException(status_code=404, detail="landing.html not found")
+
+
+@app.get("/doctor-qr")
+def serve_doctor_qr():
+    """Doctor entry QR code display page — for printing and scanning"""
+    from fastapi.responses import FileResponse
+    qr_html = frontend_dir / "doctor-qr.html"
+    if qr_html.exists():
+        return FileResponse(str(qr_html),
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+    raise HTTPException(status_code=404, detail="doctor-qr.html not found")
+
+
+@app.get("/mobile")
+def serve_mobile_doctor():
+    """Mobile doctor entry point - requires PIN authentication"""
+    from fastapi.responses import FileResponse
+    mobile_html = frontend_dir / "mobile-doctor.html"
+    if mobile_html.exists():
+        return FileResponse(str(mobile_html),
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+    raise HTTPException(status_code=404, detail="mobile-doctor.html not found")
+
+
+@app.get("/admin")
+def serve_admin_page():
+    """Admin backend - requires admin password"""
+    from fastapi.responses import FileResponse
+    admin_html = frontend_dir / "admin.html"
+    if admin_html.exists():
+        return FileResponse(str(admin_html),
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+    raise HTTPException(status_code=404, detail="admin.html not found")
 
 
 @app.get("/patient.html")
@@ -107,6 +153,15 @@ def serve_code_html():
         headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
 
 # ── API routes ──
+
+
+@app.get("/mobile-doctor.html")
+def serve_mobile_doctor_page():
+    """Serve mobile doctor page directly"""
+    mobile_doctor_html = frontend_dir / "mobile-doctor.html"
+    if mobile_doctor_html.exists():
+        return FileResponse(str(mobile_doctor_html))
+    raise HTTPException(status_code=404, detail="mobile-doctor.html not found")
 
 @app.get("/api/code/{code}")
 def lookup_code(code: str):
@@ -219,6 +274,15 @@ class DoctorPINRevoke(BaseModel):
     pin: str
 
 
+class AdminPINAuth(BaseModel):
+    pin: str
+
+
+class AdminPINSet(BaseModel):
+    new_pin: str
+    old_pin: str = ""
+
+
 def require_pin(request: Request) -> Optional[dict]:
     """Extract and verify doctor PIN from X-Doctor-PIN header.
     Returns doctor info dict, or raises 401/403."""
@@ -231,6 +295,15 @@ def require_pin(request: Request) -> Optional[dict]:
     if result.get("error") == "revoked":
         raise HTTPException(403, f"准入码已撤销（医生：{result['doctor_name']}）")
     return result
+
+
+def require_admin(request: Request) -> None:
+    """Verify admin PIN from X-Admin-PIN header. Raises 401/403 if invalid."""
+    pin = request.headers.get("X-Admin-PIN", "").strip()
+    if not pin:
+        raise HTTPException(401, "需要管理密码")
+    if not verify_admin_pin(pin):
+        raise HTTPException(401, "管理密码无效")
 
 
 @app.post("/api/auth/login")
@@ -249,10 +322,36 @@ def doctor_login(req: DoctorPINAuth):
     }
 
 
-# Doctor PIN management (admin — requires PIN for now, could be upgraded)
+# Doctor PIN management (admin — requires admin PIN authentication)
+@app.post("/api/admin/auth")
+def admin_auth(req: AdminPINAuth):
+    """Verify admin PIN. Returns {"ok": True} on success."""
+    if not verify_admin_pin(req.pin):
+        raise HTTPException(401, "管理密码无效")
+    return {"ok": True}
+
+
+@app.get("/api/admin/status")
+def admin_status():
+    """Check if admin PIN is configured. Returns {"configured": true/false}."""
+    return {"configured": has_admin_pin()}
+
+
+@app.post("/api/admin/pins/set")
+def admin_set_pin(req: AdminPINSet):
+    """Set or change admin PIN. Requires old_pin if one exists."""
+    if not req.new_pin or len(req.new_pin) < 4:
+        raise HTTPException(400, "密码至少4位")
+    result = set_admin_pin(req.new_pin, req.old_pin or None)
+    if "error" in result:
+        raise HTTPException(400, result["error"])
+    return {"ok": True}
+
+
 @app.post("/api/admin/pins")
-def admin_create_pin(req: DoctorPINCreate):
+def admin_create_pin(req: DoctorPINCreate, request: Request):
     """Create a new doctor PIN. Returns the PIN and doctor name."""
+    require_admin(request)
     p = req.pin if req.pin else None
     result = create_doctor_pin(req.doctor_name, p)
     if "error" in result:
@@ -261,16 +360,18 @@ def admin_create_pin(req: DoctorPINCreate):
 
 
 @app.delete("/api/admin/pins/{pin}")
-def admin_revoke_pin(pin: str):
+def admin_revoke_pin(pin: str, request: Request):
     """Revoke a doctor PIN."""
+    require_admin(request)
     if not revoke_doctor_pin(pin):
         raise HTTPException(404, "PIN not found")
     return {"ok": True, "revoked": pin}
 
 
 @app.get("/api/admin/pins")
-def admin_list_pins():
+def admin_list_pins(request: Request):
     """List all doctor PINs and their status."""
+    require_admin(request)
     return list_doctor_pins()
 
 
@@ -278,6 +379,14 @@ def admin_list_pins():
 def list_reports(request: Request):
     doctor = require_pin(request)
     rows = list_assessments()
+    return rows
+
+
+@app.get("/api/doctor/report")
+def doctor_list_reports(request: Request):
+    """Doctor-filtered report — returns only assessments created by this doctor."""
+    doctor = require_pin(request)
+    rows = list_assessments_by_doctor(doctor["pin"])
     return rows
 
 
@@ -321,6 +430,7 @@ def export_scores():
         "severity_score", "severity_name",
         "intensity_frequency", "intensity_duration", "intensity_controllability",
         "intensity_deterrents", "intensity_reason", "intensity_total", "intensity_level",
+        "behavior_score",
         "risk_level", "risk_label",
         "lethality_level",
         "b1_actual_attempt", "b2_interrupted", "b3_aborted", "b4_preparatory", "b5_nssi",
@@ -329,6 +439,13 @@ def export_scores():
     writer = csv.DictWriter(output, fieldnames=fields, extrasaction="ignore")
     writer.writeheader()
     for row in rows:
+        row["behavior_score"] = (
+            (1 if row.get("b1_actual_attempt") else 0) +
+            (1 if row.get("b2_interrupted") else 0) +
+            (1 if row.get("b3_aborted") else 0) +
+            (1 if row.get("b4_preparatory") else 0) +
+            (1 if row.get("b5_nssi") else 0)
+        )
         writer.writerow(row)
 
     return Response(content=output.getvalue(), media_type="text/csv; charset=utf-8")
@@ -353,71 +470,11 @@ def summary_endpoint(limit: int = 5):
     }
 
 
-@app.get("/mobile")
-def serve_mobile_doctor():
-    mobile_html = frontend_dir / "mobile-doctor.html"
-    if mobile_html.exists():
-        return FileResponse(str(mobile_html), headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
-    raise HTTPException(status_code=404, detail="mobile-doctor.html not found")
-
-
-@app.get("/admin")
-def serve_admin_page():
-    admin_html = frontend_dir / "admin.html"
-    if admin_html.exists():
-        return FileResponse(str(admin_html), headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
-    raise HTTPException(status_code=404, detail="admin.html not found")
-
-
-@app.get("/doctor-qr")
-def serve_doctor_qr_page():
-    qr_html = frontend_dir / "doctor-qr-page.html"
-    if qr_html.exists():
-        return FileResponse(str(qr_html), headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
-    raise HTTPException(status_code=404, detail="doctor-qr-page.html not found")
-
-
-@app.get("/doctor-qr.png")
-def serve_doctor_qr_image():
-    qr_png = frontend_dir / "doctor-qr-mobile.png"
-    if qr_png.exists():
-        return FileResponse(str(qr_png), headers={"Cache-Control": "public, max-age=31536000"})
-    raise HTTPException(status_code=404, detail="doctor-qr-mobile.png not found")
-
-
-@app.get("/api/qr-link/{session_id}")
-def generate_patient_link(session_id: str):
-    """Generate a direct patient URL for a session (for QR code)"""
-    session = get_session(session_id)
-    if session is None:
-        raise HTTPException(status_code=404, detail="Session not found")
-    # Return the access code so frontend can build QR URL
-    access_code = session.get("access_code", "")
-    phone = session.get("patient_phone", "")
-    patient_url = f"{CLOUD_GATEWAY_URL}/patient.html?session={session_id}"
-    if phone:
-        patient_url += f"&phone={phone}"
+@app.get("/api/config")
+def system_config():
+    """返回系统配置 — 前端用它生成患者二维码 URL"""
     return {
-        "patient_url": patient_url,
-        "access_code": access_code,
-        "session_id": session_id,
+        "patient_url_base": CLOUD_GATEWAY_URL,
     }
 
 
-@app.get("/api/qr/{access_code}")
-def generate_qr(access_code: str):
-    """Generate a QR code PNG that links to the patient self-assessment page via cloud gateway."""
-    qr_url = f"{CLOUD_GATEWAY_URL}/code?code={access_code}"
-    qr = qrcode.QRCode(
-        version=1,
-        error_correction=qrcode.constants.ERROR_CORRECT_L,
-        box_size=10,
-        border=4,
-    )
-    qr.add_data(qr_url)
-    qr.make(fit=True)
-    img = qr.make_image(fill_color="black", back_color="white")
-    buf = io.BytesIO()
-    img.save(buf, format="PNG")
-    buf.seek(0)
-    return Response(content=buf.getvalue(), media_type="image/png")

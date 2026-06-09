@@ -301,6 +301,20 @@ body {
 .action-list li { padding: 10px 12px; margin-bottom: 6px; background: #FEF2F2; border-left: 3px solid #EF4444; border-radius: 0 8px 8px 0; font-size: 14px; color: #991B1B; }
 .action-list li.safe { background: #F0FDF4; border-left-color: var(--risk-none); color: #15803D; }
 
+/* ── Questionnaire view ── */
+.q-page { background: var(--card); border-radius: var(--radius); padding: 20px 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+.q-page h4 { font-size: 15px; font-weight: 700; color: var(--primary); margin-bottom: 14px; padding-bottom: 8px; border-bottom: 2px solid #EFF6FF; }
+.q-item { padding: 12px 0; border-bottom: 1px solid #F1F5F9; }
+.q-item:last-child { border-bottom: none; }
+.q-question { font-size: 14px; color: var(--text); font-weight: 600; margin-bottom: 6px; line-height: 1.5; }
+.q-answer { font-size: 14px; color: var(--danger); font-weight: 600; padding: 6px 10px; background: #FEF2F2; border-radius: 8px; border-left: 3px solid var(--danger); margin-top: 4px; line-height: 1.5; }
+.q-empty { font-size: 13px; color: #CBD5E1; font-style: italic; }
+.q-yn { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; padding: 4px 0; }
+.q-yn .q-val { font-weight: 700; }
+.q-yn .q-val.yes { color: var(--danger); }
+.q-yn .q-val.no { color: var(--text-secondary); }
+.q-yn .q-val.na { color: #CBD5E1; }
+
 /* ── Empty state ── */
 .empty-state { text-align: center; padding: 60px 20px; color: var(--text-secondary); }
 .empty-state .icon { font-size: 48px; margin-bottom: 12px; opacity: 0.4; }
@@ -423,6 +437,11 @@ body {
   <div id="report-content"></div>
 </div>
 
+<!-- View 5: Full Questionnaire -->
+<div class="view" id="view-questionnaire" style="display:none;">
+  <div id="questionnaire-content"></div>
+</div>
+
 <!-- FAB -->
 <button class="fab" id="fab" style="display:none;" onclick="showView('create')">+</button>
 
@@ -437,6 +456,7 @@ body {
 
 <script>
 const API = window.location.origin;
+let patientUrlBase = '';  // Cloud gateway URL for patient QR codes
 let pollTimer = null;
 let currentSessionId = null;
 // ── Storage helper: localStorage (persistent, same behavior as admin after logout) ──
@@ -652,7 +672,7 @@ async function loadDoctorPins() {
 // ── API: Load assessments ─
 async function loadAssessments() {
   try {
-    const res = await authFetch(API + '/api/report');
+    const res = await authFetch(API + '/api/doctor/report');
     if (!res) return;
     const data = await res.json();
     renderCards(data);
@@ -696,6 +716,7 @@ function renderCards(data) {
       '<div class="card-date">' + dateStr +
         ' · 严重度 ' + (a.severity_score || '-') +
         ' · 强度 ' + (a.intensity_total != null ? a.intensity_total : '-') +
+        ' · 行为 ' + ((a.b1_actual_attempt||a.b2_interrupted||a.b3_aborted||a.b4_preparatory||a.b5_nssi) ? '阳性' : '阴性') +
       '</div>' +
     '</div>';
   }).join('');
@@ -729,12 +750,12 @@ async function createSession() {
     document.getElementById('qr-patient-phone').textContent = data.patient_phone || '未填写手机号';
     document.getElementById('access-code-display').textContent = data.access_code;
 
-    var patientUrl = API + '/patient.html?session=' + encodeURIComponent(data.session_id) +
+    var patientUrl = patientUrlBase + '/patient.html?session=' + encodeURIComponent(data.session_id) +
       (data.patient_phone ? '&phone=' + encodeURIComponent(data.patient_phone) : '');
     var qrSvgUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=' + encodeURIComponent(patientUrl);
     document.getElementById('qr-image').src = qrSvgUrl;
 
-    var baseUrl = window.location.origin;
+    var baseUrl = patientUrlBase;
     document.getElementById('code-url').textContent = baseUrl + '/code';
 
     currentSessionId = data.session_id;
@@ -795,26 +816,84 @@ function renderReport(d) {
     '<div class="risk-sub">' + escapeHtml(d.patient_id) + ' · ' + formatDate(d.assessment_date) + '</div>' +
   '</div>';
 
-  html += '<div class="report-section"><h3>评分摘要</h3>';
-  html += scoreRow('意念严重度', d.severity_score + '/5', getSeverityName(d.severity_score));
-  html += scoreRow('意念强度', d.intensity_total + '/25', d.intensity_level || '不适用');
-  html += scoreRow('致死性', d.lethality_level + '/6', '');
+  // ── Section 1: 意念筛查 (I1-I5) ──
+  html += '<div class="report-section"><h3>一、意念筛查 (I1-I5)</h3>';
+  html += ynRow('I1: 是否有渴望死亡的意愿', d.i1_wish_dead);
+  html += ynRow('I2: 是否有非特定的主动自杀意念', d.i2_non_specific);
+  html += ynRow('I3: 是否有具体方法的主动意念', d.i3_with_method);
+  if (d.i3_with_method === 1 || d.i3_with_method === '1') {
+    if (d.i3_method) html += detailRow('  自杀方法', d.i3_method);
+    if (d.i3_location) html += detailRow('  地点', d.i3_location);
+    if (d.i3_timing) html += detailRow('  时机', d.i3_timing);
+  }
+  html += ynRow('I4: 是否有意图（无计划）', d.i4_with_intent);
+  if (d.i4_with_intent === 1 || d.i4_with_intent === '1') {
+    if (d.i4_intent_strength != null) html += detailRow('  意图强度', d.i4_intent_strength + '/10');
+  }
+  html += ynRow('I5: 是否有计划有意图', d.i5_with_plan_and_intent);
   html += '</div>';
 
-  var answers = getPatientAnswers(d);
-  if (answers.length > 0) {
-    html += '<div class="report-section"><h3>答卷原文</h3>';
-    answers.forEach(function(a) {
-      html += '<div class="answer-row"><span class="answer-label">' + escapeHtml(a.label) + '</span>' +
-        '<span class="answer-value">' + escapeHtml(a.value) + '</span></div>';
-    });
-    html += '</div>';
+  // ── Section 2: 意念强度 ──
+  html += '<div class="report-section"><h3>二、意念强度</h3>';
+  html += scoreRow('频率', intensityText(d.intensity_frequency));
+  html += scoreRow('持续时间', intensityText(d.intensity_duration));
+  html += scoreRow('可控制程度', intensityText(d.intensity_controllability));
+  html += scoreRow('阻止因素', intensityText(d.intensity_deterrents));
+  html += scoreRow('自杀理由', intensityText(d.intensity_reason));
+  html += scoreRow('总分', d.intensity_total + '/25', d.intensity_level || '');
+  html += '</div>';
+
+  // ── Section 3: 自杀行为 (B1-B5) ──
+  html += '<div class="report-section"><h3>三、自杀行为 (B1-B5)</h3>';
+
+  html += ynRow('B1: 是否有实际的自杀企图', d.b1_actual_attempt);
+  if (d.b1_actual_attempt === 1 || d.b1_actual_attempt === '1') {
+    if (d.b1_method) html += detailRow('  方法', d.b1_method);
+    if (d.b1_date) html += detailRow('  日期', d.b1_date);
+    html += ynRow('  B1: 是否造成医疗损伤', d.b1_medical_damage);
+    html += ynRow('  B1: 是否有致死意图', d.b1_lethal_intent);
+    html += ynRow('  B1: 是否需要医疗干预', d.b1_medical_intervention);
   }
 
+  html += ynRow('B2: 是否有中断的自杀行为', d.b2_interrupted);
+  if (d.b2_interrupted === 1 || d.b2_interrupted === '1') {
+    if (d.b2_method) html += detailRow('  方法', d.b2_method);
+    if (d.b2_date) html += detailRow('  日期', d.b2_date);
+    if (d.b2_interrupted_by) html += detailRow('  被谁/什么中断', d.b2_interrupted_by);
+  }
+
+  html += ynRow('B3: 是否有中止的自杀行为', d.b3_aborted);
+  if (d.b3_aborted === 1 || d.b3_aborted === '1') {
+    if (d.b3_method) html += detailRow('  方法', d.b3_method);
+    if (d.b3_date) html += detailRow('  日期', d.b3_date);
+    if (d.b3_stopped_by) html += detailRow('  被谁/什么中止', d.b3_stopped_by);
+  }
+
+  html += ynRow('B4: 是否有准备行为', d.b4_preparatory);
+  if (d.b4_preparatory === 1 || d.b4_preparatory === '1') {
+    if (d.b4_behavior) html += detailRow('  行为', d.b4_behavior);
+    if (d.b4_date) html += detailRow('  日期', d.b4_date);
+    html += ynRow('  B4: 是否有计划', d.b4_has_plan);
+  }
+
+  html += ynRow('B5: 是否有非自杀性自伤', d.b5_nssi);
+  if (d.b5_nssi === 1 || d.b5_nssi === '1') {
+    if (d.b5_behavior_type) html += detailRow('  行为类型', d.b5_behavior_type);
+    if (d.b5_frequency) html += detailRow('  频率', d.b5_frequency);
+    if (d.b5_motivation) html += detailRow('  动机', d.b5_motivation);
+  }
+  html += '</div>';
+
+  // ── Section 4: 致死性 ──
+  html += '<div class="report-section"><h3>四、致死性</h3>';
+  html += scoreRow('等级', d.lethality_level + '/6', '');
+  html += '</div>';
+
+  // ── Section 5: 处理建议 ──
   var actions = d.immediate_actions || [];
   if (actions.length > 0) {
     var isSafe = d.risk_level === 'none';
-    html += '<div class="report-section"><h3>处理建议</h3><ul class="action-list">';
+    html += '<div class="report-section"><h3>五、处理建议</h3><ul class="action-list">';
     actions.forEach(function(a) { html += '<li class="' + (isSafe ? 'safe' : '') + '">' + escapeHtml(a) + '</li>'; });
     html += '</ul></div>';
   }
@@ -826,9 +905,32 @@ function renderReport(d) {
 
   html += '<div class="btn-row" style="margin-top:24px;">' +
     '<button class="btn btn-primary" onclick="goBack()">返回列表</button>' +
+    '<button class="btn btn-secondary" onclick="showQuestionnaire()" style="border-color:#EF4444;color:#EF4444;">📋 查看完整量表内容</button>' +
   '</div>';
 
   document.getElementById('report-content').innerHTML = html;
+
+  // Store current data for questionnaire view
+  window._currentAssessment = d;
+}
+
+function ynRow(label, val) {
+  var display = '—';
+  if (val === 1 || val === '1') display = '✅ 是';
+  else if (val === 0 || val === '0') display = '否';
+  return '<div class="answer-row"><span class="answer-label">' + escapeHtml(label) + '</span>' +
+    '<span class="answer-value">' + display + '</span></div>';
+}
+
+function detailRow(label, val) {
+  if (!val) return '';
+  return '<div class="answer-row"><span class="answer-label">' + escapeHtml(label) + '</span>' +
+    '<span class="answer-value">' + escapeHtml(val) + '</span></div>';
+}
+
+function intensityText(val) {
+  if (val == null || val === '') return '不适用';
+  return val;
 }
 
 function scoreRow(label, value, sub) {
@@ -838,21 +940,6 @@ function scoreRow(label, value, sub) {
   '</div>';
 }
 
-function getPatientAnswers(d) {
-  var answers = [];
-  if (d.i1_onset) answers.push({label:'出现时间', value:d.i1_onset});
-  if (d.i1_duration) answers.push({label:'持续时间', value:d.i1_duration});
-  if (d.i1_frequency) answers.push({label:'出现频率', value:d.i1_frequency});
-  if (d.i2_nature) answers.push({label:'意念内容', value:d.i2_nature});
-  if (d.i3_method) { answers.push({label:'自杀方法', value:d.i3_method}); if(d.i3_location) answers.push({label:'地点', value:d.i3_location}); if(d.i3_timing) answers.push({label:'时机', value:d.i3_timing}); }
-  if (d.i4_intent_strength != null) answers.push({label:'意图强度', value:d.i4_intent_strength + '/10'});
-  if (d.b4_behavior) { answers.push({label:'准备行为', value:d.b4_behavior}); if(d.b4_date) answers.push({label:'日期', value:d.b4_date}); }
-  if (d.b1_method) { answers.push({label:'企图方法', value:d.b1_method}); if(d.b1_date) answers.push({label:'日期', value:d.b1_date}); }
-  if (d.b2_method) answers.push({label:'中断行为', value:d.b2_method});
-  if (d.b3_method) answers.push({label:'中止行为', value:d.b3_method});
-  return answers;
-}
-
 function getRiskLabel(level) { var m={none:'无风险',low:'低风险',medium:'中风险',high:'高风险',critical:'极高风险'}; return m[level]||'未知'; }
 function getRiskColor(level) { var m={none:'#22C55E',low:'#EAB308',medium:'#FFA500',high:'#FF4444',critical:'#8B0000'}; return m[level]||'#64748B'; }
 function getSeverityName(score) { var m={0:'无自杀意念',1:'渴望死亡',2:'非特定主动意念',3:'有方法的主动意念',4:'有意图无计划',5:'有计划有意图'}; return m[score]||'未知'; }
@@ -860,7 +947,186 @@ function formatDate(s) { if(!s) return '-'; return s.slice(0,10); }
 function escapeHtml(s) { if(!s) return ''; var d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
 function escapeJs(s) { return (s||'').replace(/'/g,"\\'").replace(/\\/g,'\\\\'); }
 
+// ── Questionnaire view ──
+function showQuestionnaire() {
+  showView('questionnaire');
+  var d = window._currentAssessment;
+  if (!d) {
+    document.getElementById('questionnaire-content').innerHTML = '<div class="empty-state"><p>数据未加载</p><button class="btn btn-primary" onclick="goBack()">返回</button></div>';
+    return;
+  }
+  renderQuestionnaire(d);
+}
+
+function renderQuestionnaire(d) {
+  var html = '';
+
+  // Patient info header
+  html += '<div class="q-page" style="text-align:center;background:#EFF6FF;border:1px solid #BFDBFE;">' +
+    '<div style="font-size:18px;font-weight:700;color:var(--primary);">' + escapeHtml(d.patient_id) + '</div>' +
+    (d.patient_phone ? '<div style="font-size:13px;color:var(--text-secondary);margin-top:4px;">📞 ' + escapeHtml(d.patient_phone) + '</div>' : '') +
+    '<div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">评估日期: ' + formatDate(d.assessment_date) + '</div>' +
+  '</div>';
+
+  // ── I1 ──
+  html += qPage('一、意念筛查', [
+    qItem('你是否曾希望自己可以死去或不再存在？', i1w(d.i1_wish_dead), [
+      qField('出现时间', d.i1_onset),
+      qField('持续时间', d.i1_duration),
+      qField('出现频率', d.i1_frequency)
+    ]),
+    qItem('你是否有过任何伤害自己的想法？有没有想过要结束自己的生命，但还没有想到具体怎么做？', i2a(d.i2_non_specific), [
+      qField('意念内容', d.i2_nature),
+      qField('频率', d.i2_frequency),
+      qField('持续时间', d.i2_duration)
+    ]),
+    qItem('在这些想法中，你有没有想过具体的自杀方法？', i3a(d.i3_with_method), [
+      qField('自杀方法', d.i3_method),
+      qField('地点', d.i3_location),
+      qField('时机', d.i3_timing)
+    ]),
+    qItem('你有没有想过要真的去做，但还没有计划具体的方式？', i4a(d.i4_with_intent), [
+      d.i4_with_intent === 1 || d.i4_with_intent === '1' ? qField('意图强度', d.i4_intent_strength != null ? d.i4_intent_strength + '/10' : null) : ''
+    ]),
+    qItem('你有没有想过具体的自杀方法，并且也打算真正去做？', i5a(d.i5_with_plan_and_intent), [])
+  ]);
+
+  // ── Intensity ──
+  html += qPage('二、意念强度', [
+    qItemSimple('这些想法多久出现一次？', d.intensity_frequency),
+    qItemSimple('每次想法大约持续多长时间？', d.intensity_duration),
+    qItemSimple('你觉得能控制这些想法吗？', d.intensity_controllability),
+    qItemSimple('有什么阻止你采取行动的理由吗？', d.intensity_deterrents),
+    qItemSimple('你是否有过任何准备行动？', d.intensity_reason)
+  ]);
+  // Total score
+  html += '<div class="q-page"><h4>意念强度总分</h4>' +
+    '<div style="font-size:28px;font-weight:800;text-align:center;color:' + (d.intensity_total > 15 ? 'var(--danger)' : 'var(--text)') + ';">' +
+    (d.intensity_total || 0) + ' / 25</div>' +
+    (d.intensity_level ? '<div style="text-align:center;margin-top:8px;font-size:14px;color:var(--text-secondary);">' + escapeHtml(d.intensity_level) + '</div>' : '') +
+  '</div>';
+
+  // ── Behavior ──
+  html += qPage('三、自杀行为', [
+    qItem('你有没有真正地尝试过结束自己的生命？', b1a(d.b1_actual_attempt), [
+      qField('方法', d.b1_method),
+      qField('日期', d.b1_date),
+      qField('是否造成医疗损伤', ynMini(d.b1_medical_damage)),
+      qField('是否有致死意图', ynMini(d.b1_lethal_intent)),
+      qField('是否需要医疗干预', ynMini(d.b1_medical_intervention))
+    ]),
+    qItem('你有没有开始做但在真正开始伤害自己之前被阻止了？', b2a(d.b2_interrupted), [
+      qField('方法', d.b2_method),
+      qField('日期', d.b2_date),
+      qField('被谁/什么中断', d.b2_interrupted_by)
+    ]),
+    qItem('你有没有开始做但在真正开始伤害自己之前自己决定不继续了？', b3a(d.b3_aborted), [
+      qField('方法', d.b3_method),
+      qField('日期', d.b3_date),
+      qField('被谁/什么中止', d.b3_stopped_by)
+    ]),
+    qItem('你有没有做过任何事情来准备自杀？比如收集药片、获取武器等？', b4a(d.b4_preparatory), [
+      qField('行为', d.b4_behavior),
+      qField('日期', d.b4_date),
+      qField('有计划', ynMini(d.b4_has_plan))
+    ]),
+    qItem('你有没有故意伤害过自己但不想死？', b5a(d.b5_nssi), [
+      qField('行为类型', d.b5_behavior_type),
+      qField('频率', d.b5_frequency),
+      qField('动机', d.b5_motivation)
+    ])
+  ]);
+
+  // ── Lethality ──
+  html += '<div class="q-page"><h4>四、致死性</h4>' +
+    '<div style="font-size:28px;font-weight:800;text-align:center;color:' + (d.lethality_level > 3 ? 'var(--danger)' : 'var(--text)') + ';">' +
+    (d.lethality_level || 0) + ' / 6</div></div>';
+
+  // ── Actions ──
+  var actions = d.immediate_actions || [];
+  if (actions.length > 0) {
+    var isSafe = d.risk_level === 'none';
+    html += '<div class="q-page"><h4>五、处理建议</h4><ul class="action-list">';
+    actions.forEach(function(a) { html += '<li class="' + (isSafe ? 'safe' : '') + '">' + escapeHtml(a) + '</li>'; });
+    html += '</ul></div>';
+  }
+  if (d.follow_up) {
+    html += '<div class="q-page"><h4>随访计划</h4>' +
+      '<p style="font-size:14px;color:var(--text);">' + escapeHtml(d.follow_up) + '</p></div>';
+  }
+
+  // Back buttons
+  html += '<div class="btn-row" style="margin-top:24px;">' +
+    '<button class="btn btn-primary" onclick="showReportFromQuestionnaire()">← 返回报告摘要</button>' +
+    '<button class="btn btn-secondary" onclick="goBack()">返回列表</button>' +
+  '</div>';
+
+  document.getElementById('questionnaire-content').innerHTML = html;
+}
+
+// ── Questionnaire helpers ──
+function qPage(title, items) {
+  return '<div class="q-page"><h4>' + title + '</h4>' + items.join('') + '</div>';
+}
+
+function qItem(question, ynHtml, fields) {
+  var fieldsHtml = fields.filter(function(f) { return f; }).join('');
+  return '<div class="q-item">' +
+    '<div class="q-question">' + question + '</div>' +
+    '<div>' + ynHtml + '</div>' +
+    (fieldsHtml ? '<div style="margin-top:8px;padding-left:12px;">' + fieldsHtml + '</div>' : '') +
+  '</div>';
+}
+
+function qItemSimple(question, val) {
+  return '<div class="q-item">' +
+    '<div class="q-question">' + question + '</div>' +
+    (val != null && val !== '' ? '<div class="q-answer">' + escapeHtml(val) + '</div>' : '') +
+  '</div>';
+}
+
+function qField(label, val) {
+  if (val == null || val === '' || val === 'null' || val === 'undefined') return '';
+  return '<div class="q-item" style="padding:8px 0;border-bottom:none;">' +
+    '<div class="q-question" style="font-size:13px;font-weight:500;color:var(--text-secondary);">' + label + '</div>' +
+    '<div class="q-answer">' + escapeHtml(val) + '</div>' +
+  '</div>';
+}
+
+function ynMini(val) {
+  if (val === 1 || val === '1') return '<div class="q-item" style="padding:8px 0;border-bottom:none;"><div class="q-answer">是</div></div>';
+  if (val === 0 || val === '0') return '';
+  return '';
+}
+
+function i1w(val) { return ynHtml(val); }
+function i2a(val) { return ynHtml(val); }
+function i3a(val) { return ynHtml(val); }
+function i4a(val) { return ynHtml(val); }
+function i5a(val) { return ynHtml(val); }
+function b1a(val) { return ynHtml(val); }
+function b2a(val) { return ynHtml(val); }
+function b3a(val) { return ynHtml(val); }
+function b4a(val) { return ynHtml(val); }
+function b5a(val) { return ynHtml(val); }
+
+function ynHtml(val) {
+  if (val === 1 || val === '1') return '<div class="q-answer">是</div>';
+  if (val === 0 || val === '0') return '<div class="q-empty">否</div>';
+  return '<div class="q-empty">未填写</div>';
+}
+
+function showReportFromQuestionnaire() {
+  showView('report');
+}
+
 // ── Init ──
+// Fetch cloud gateway URL for patient QR codes
+fetch(API + '/api/config')
+  .then(function(r) { return r.json(); })
+  .then(function(cfg) { patientUrlBase = cfg.patient_url_base; })
+  .catch(function() { patientUrlBase = window.location.origin; });
+
 // Check for ?reset=1 to force fresh login
 if (window.location.search.indexOf('reset=1') >= 0) {
   Storage.remove('cssrs_doctor_pin');

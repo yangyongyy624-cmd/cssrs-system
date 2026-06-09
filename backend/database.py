@@ -201,6 +201,16 @@ def list_assessments() -> list[dict]:
     return [_row_to_dict(r) for r in rows]
 
 
+def list_assessments_by_doctor(pin: str) -> list[dict]:
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT * FROM cssrs_assessments WHERE doctor_pin = ? ORDER BY created_at DESC",
+        (pin,),
+    ).fetchall()
+    conn.close()
+    return [_row_to_dict(r) for r in rows]
+
+
 def get_patient_history(patient_id: str) -> list[dict]:
     conn = get_db()
     rows = conn.execute(
@@ -310,3 +320,84 @@ def list_doctor_pins() -> list[dict]:
     ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+# ── Admin PIN management ──
+
+def init_admin_pins_table() -> Optional[str]:
+    """Create cssrs_admin_pins table. Auto-generates admin PIN on first run.
+    Returns the generated PIN string, or None if one already exists."""
+    conn = get_db()
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS cssrs_admin_pins (
+            pin TEXT PRIMARY KEY,
+            is_active INTEGER NOT NULL DEFAULT 1,
+            created_at TEXT DEFAULT (datetime('now')),
+            revoked_at TEXT
+        )
+    """)
+    existing = conn.execute("SELECT pin FROM cssrs_admin_pins WHERE is_active = 1").fetchone()
+    if existing:
+        conn.close()
+        return None
+
+    # Bootstrap: no admin PIN exists yet, generate one
+    admin_pin = "".join(random.choices("0123456789", k=6))
+    conn.execute("INSERT INTO cssrs_admin_pins (pin) VALUES (?)", (admin_pin,))
+    conn.commit()
+    conn.close()
+    return admin_pin
+
+
+def verify_admin_pin(pin: str) -> bool:
+    """Check if admin PIN is valid and active."""
+    conn = get_db()
+    row = conn.execute(
+        "SELECT is_active FROM cssrs_admin_pins WHERE pin = ?",
+        (pin,),
+    ).fetchone()
+    conn.close()
+    if row is None:
+        return False
+    return bool(row["is_active"])
+
+
+def has_admin_pin() -> bool:
+    """Check if any active admin PIN exists."""
+    conn = get_db()
+    row = conn.execute("SELECT 1 FROM cssrs_admin_pins WHERE is_active = 1").fetchone()
+    conn.close()
+    return row is not None
+
+
+def set_admin_pin(new_pin: str, old_pin: Optional[str] = None) -> dict:
+    """Set a new admin PIN. If old_pin is provided, verifies it first.
+    Returns {"ok": True} or {"error": "..."}."""
+    conn = get_db()
+    try:
+        if old_pin:
+            row = conn.execute(
+                "SELECT is_active FROM cssrs_admin_pins WHERE pin = ?", (old_pin,)
+            ).fetchone()
+            if not row or not row["is_active"]:
+                return {"error": "旧密码错误"}
+            # Revoke old PIN and insert new one
+            conn.execute(
+                "UPDATE cssrs_admin_pins SET is_active = 0, revoked_at = datetime('now') WHERE pin = ?",
+                (old_pin,),
+            )
+        else:
+            # No old PIN to verify — check if any active admin exists
+            existing = conn.execute(
+                "SELECT 1 FROM cssrs_admin_pins WHERE is_active = 1"
+            ).fetchone()
+            if existing:
+                return {"error": "管理员已配置，请使用旧密码修改"}
+
+        conn.execute("INSERT INTO cssrs_admin_pins (pin) VALUES (?)", (new_pin,))
+        conn.commit()
+        return {"ok": True}
+    except sqlite3.IntegrityError:
+        return {"error": "该密码已存在，请换一个"}
+    finally:
+        conn.close()
