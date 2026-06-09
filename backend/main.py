@@ -37,6 +37,7 @@ from models import SessionCreate, AssessRequest, AssessmentResponse
 from database import (
     init_db, save_assessment, get_assessment, list_assessments, list_assessments_by_doctor, get_patient_history,
     create_session, get_session, resolve_access_code, search_by_phone,
+    delete_assessment, delete_assessments,
 )
 from database import init_doctor_pins_table, verify_doctor_pin, create_doctor_pin, revoke_doctor_pin, list_doctor_pins
 from database import init_admin_pins_table, verify_admin_pin, has_admin_pin, set_admin_pin
@@ -415,6 +416,29 @@ def admin_get_report(session_id: str, request: Request):
     if row is None:
         raise HTTPException(status_code=404, detail="Assessment not found")
     return row
+
+
+@app.delete("/api/admin/report/{session_id}")
+def admin_delete_report(session_id: str, request: Request):
+    """Admin endpoint — delete a single assessment."""
+    require_admin(request)
+    if not delete_assessment(session_id):
+        raise HTTPException(status_code=404, detail="Assessment not found")
+    return {"ok": True, "deleted": session_id}
+
+
+class DeleteRequest(BaseModel):
+    session_ids: list[str]
+
+
+@app.post("/api/admin/report/delete")
+def admin_delete_reports(req: DeleteRequest, request: Request):
+    """Admin endpoint — delete multiple assessments."""
+    require_admin(request)
+    if not req.session_ids:
+        raise HTTPException(400, "No session IDs provided")
+    deleted = delete_assessments(req.session_ids)
+    return {"ok": True, "deleted_count": deleted}
 
 
 @app.get("/api/patient/{patient_id}/history")

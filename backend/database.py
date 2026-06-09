@@ -184,7 +184,10 @@ def save_assessment(result: dict):
 def get_assessment(session_id: str) -> Optional[dict]:
     conn = get_db()
     row = conn.execute(
-        "SELECT * FROM cssrs_assessments WHERE session_id = ?", (session_id,)
+        "SELECT a.*, d.doctor_name "
+        "FROM cssrs_assessments a "
+        "LEFT JOIN cssrs_doctor_pins d ON a.doctor_pin = d.pin "
+        "WHERE a.session_id = ?", (session_id,)
     ).fetchone()
     conn.close()
     if row is None:
@@ -195,7 +198,10 @@ def get_assessment(session_id: str) -> Optional[dict]:
 def list_assessments() -> list[dict]:
     conn = get_db()
     rows = conn.execute(
-        "SELECT * FROM cssrs_assessments ORDER BY created_at DESC"
+        "SELECT a.*, d.doctor_name "
+        "FROM cssrs_assessments a "
+        "LEFT JOIN cssrs_doctor_pins d ON a.doctor_pin = d.pin "
+        "ORDER BY a.created_at DESC"
     ).fetchall()
     conn.close()
     return [_row_to_dict(r) for r in rows]
@@ -219,6 +225,33 @@ def get_patient_history(patient_id: str) -> list[dict]:
     ).fetchall()
     conn.close()
     return [_row_to_dict(r) for r in rows]
+
+
+def delete_assessment(session_id: str) -> bool:
+    """Delete a single assessment by session_id. Returns True if deleted."""
+    conn = get_db()
+    cursor = conn.execute(
+        "DELETE FROM cssrs_assessments WHERE session_id = ?",
+        (session_id,),
+    )
+    conn.commit()
+    deleted = cursor.rowcount > 0
+    conn.close()
+    return deleted
+
+
+def delete_assessments(session_ids: list[str]) -> int:
+    """Delete multiple assessments by session_ids. Returns number of deleted rows."""
+    conn = get_db()
+    placeholders = ",".join("?" for _ in session_ids)
+    cursor = conn.execute(
+        f"DELETE FROM cssrs_assessments WHERE session_id IN ({placeholders})",
+        session_ids,
+    )
+    conn.commit()
+    deleted = cursor.rowcount
+    conn.close()
+    return deleted
 
 
 def search_by_phone(phone: str) -> list[dict]:

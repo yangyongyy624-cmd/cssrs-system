@@ -270,6 +270,59 @@ body {
   text-align:center; padding:60px 20px; color:var(--text-secondary);
 }
 .empty-assessments .icon { font-size:48px; margin-bottom:16px; opacity:0.5; }
+
+/* ── Selection mode ── */
+.assessment-card { position:relative; transition:all 0.2s; }
+.assessment-card.selectable { cursor:pointer; }
+.assessment-card.selectable .select-checkbox {
+  position:absolute; top:12px; left:12px;
+  width:22px; height:22px; border:2px solid var(--border); border-radius:6px;
+  background:white; display:none; align-items:center; justify-content:center;
+  transition:all 0.15s;
+}
+.assessment-card.selectable .select-checkbox::after {
+  content:'✓'; color:white; font-size:14px; font-weight:700; display:none;
+}
+.assessment-card.selectable.selected .select-checkbox {
+  display:flex; background:var(--primary); border-color:var(--primary);
+}
+.assessment-card.selectable.selected .select-checkbox::after { display:block; }
+.assessment-card.selectable.selected {
+  background:#F5F3FF; border:1px solid #DDD6FE;
+}
+.select-mode-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 16px; background:var(--primary); color:white;
+  border-radius:var(--radius); margin-bottom:16px;
+}
+.select-mode-header .count { font-size:14px; font-weight:600; }
+.select-actions { display:flex; gap:8px; }
+.select-btn {
+  padding:8px 16px; border:none; border-radius:8px; font-size:13px;
+  font-weight:600; cursor:pointer; white-space:nowrap;
+}
+.select-btn.delete { background:#EF4444; color:white; }
+.select-btn.delete:active { background:#DC2626; }
+.select-btn.cancel { background:rgba(255,255,255,0.2); color:white; }
+.select-btn.cancel:active { background:rgba(255,255,255,0.3); }
+.select-all-bar {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 16px; background:var(--card); border-radius:var(--radius);
+  margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,0.06);
+}
+.select-all-bar label {
+  display:flex; align-items:center; gap:8px; font-size:14px; font-weight:600;
+  cursor:pointer;
+}
+.select-all-bar input[type="checkbox"] {
+  width:18px; height:18px; accent-color:var(--primary); cursor:pointer;
+}
+.toggle-select-btn {
+  padding:8px 16px; background:var(--bg); color:var(--text);
+  border:1.5px solid var(--border); border-radius:8px; font-size:13px;
+  font-weight:600; cursor:pointer;
+}
+.toggle-select-btn:active { background:#E2E8F0; }
 </style>
 </head>
 <body>
@@ -359,7 +412,7 @@ body {
 
 <script>
 var API = window.location.origin;
-var ADMIN_PIN = '8888'; // hardcoded admin PIN
+var ADMIN_PIN = 'YOUR_ADMIN_PIN'; // Set your admin PIN here
 var isAuthed = sessionStorage.getItem('cssrs_admin_auth') === '1';
 
 function toast(msg) {
@@ -552,10 +605,12 @@ function switchTab(tabName) {
 
 // ── Assessment list ──
 var currentAssessments = [];
+var selectionMode = false;
+var selectedIds = new Set();
 
 async function loadAssessments() {
   var listEl = document.getElementById('assessment-summary-list');
-  listEl.innerHTML = '<div class="empty-assessments"><div class="icon">📋</div><div>加载中...</div></div>';
+  listEl.innerHTML = '<div class="empty-assessments"><div class="icon"></div><div>加载中...</div></div>';
   try {
     var res = await fetch(API + '/api/admin/report', {
       headers: { 'X-Admin-PIN': ADMIN_PIN }
@@ -563,10 +618,74 @@ async function loadAssessments() {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     var data = await res.json();
     currentAssessments = data.assessments || [];
+    selectedIds.clear();
     renderAssessmentList(currentAssessments);
   } catch(e) {
     listEl.innerHTML = '<div class="empty-assessments"><div class="icon">⚠️</div><div>加载失败: ' + e.message + '</div></div>';
   }
+}
+
+function toggleSelectionMode() {
+  selectionMode = !selectionMode;
+  selectedIds.clear();
+  renderAssessmentList(currentAssessments);
+}
+
+function toggleSelectAll() {
+  if (selectedIds.size === currentAssessments.length) {
+    selectedIds.clear();
+  } else {
+    currentAssessments.forEach(function(a) { selectedIds.add(a.session_id); });
+  }
+  renderAssessmentList(currentAssessments);
+}
+
+function toggleSelect(idx) {
+  var a = currentAssessments[idx];
+  if (!a) return;
+  if (selectedIds.has(a.session_id)) {
+    selectedIds.delete(a.session_id);
+  } else {
+    selectedIds.add(a.session_id);
+  }
+  updateSelectAllCheckbox();
+  renderAssessmentList(currentAssessments);
+}
+
+function updateSelectAllCheckbox() {
+  var checkbox = document.getElementById('select-all-checkbox');
+  if (checkbox) {
+    checkbox.checked = selectedIds.size === currentAssessments.length && currentAssessments.length > 0;
+  }
+}
+
+function deleteSelected() {
+  if (selectedIds.size === 0) return;
+  var count = selectedIds.size;
+  if (!confirm('确认删除选中的 ' + count + ' 条评估记录？\n此操作不可恢复。')) return;
+
+  var ids = Array.from(selectedIds);
+  fetch(API + '/api/admin/report/delete', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Admin-PIN': ADMIN_PIN
+    },
+    body: JSON.stringify({ session_ids: ids })
+  })
+  .then(function(res) {
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return res.json();
+  })
+  .then(function(data) {
+    toast('✅ 已删除 ' + data.deleted_count + ' 条记录');
+    selectedIds.clear();
+    selectionMode = false;
+    loadAssessments();
+  })
+  .catch(function(e) {
+    toast('❌ 删除失败: ' + e.message);
+  });
 }
 
 function renderAssessmentList(assessments) {
@@ -575,24 +694,63 @@ function renderAssessmentList(assessments) {
     listEl.innerHTML = '<div class="empty-assessments"><div class="icon">📭</div><div>暂无患者评估数据</div></div>';
     return;
   }
-  listEl.innerHTML = assessments.map(function(a, idx) {
+
+  var html = '';
+
+  // Selection mode header
+  if (selectionMode) {
+    html += '<div class="select-mode-header">' +
+      '<div class="count">已选 ' + selectedIds.size + ' / ' + assessments.length + '</div>' +
+      '<div class="select-actions">' +
+        '<button class="select-btn delete" onclick="deleteSelected()">🗑️ 删除 (' + selectedIds.size + ')</button>' +
+        '<button class="select-btn cancel" onclick="toggleSelectionMode()">取消</button>' +
+      '</div>' +
+    '</div>';
+
+    // Select all bar
+    var allSelected = selectedIds.size === assessments.length;
+    html += '<div class="select-all-bar">' +
+      '<label><input type="checkbox" id="select-all-checkbox" ' + (allSelected ? 'checked' : '') + ' onchange="toggleSelectAll()"> 全选</label>' +
+    '</div>';
+  } else {
+    // Toggle button
+    html += '<div style="display:flex; justify-content:flex-end; margin-bottom:12px;">' +
+      '<button class="toggle-select-btn" onclick="toggleSelectionMode()">️ 多选删除</button>' +
+    '</div>';
+  }
+
+  // Assessment cards
+  html += assessments.map(function(a, idx) {
     var riskClass = 'risk-' + (a.risk_level || 'none');
     var riskLabel = getRiskLabel(a.risk_level);
-    var patientName = a.patient_name || a.phone_number || '未知';
-    return '<div class="assessment-card ' + riskClass + '" onclick="showAssessmentDetail(' + idx + ')">' +
+    var patientName = a.patient_id || '未知';
+    var patientPhone = a.patient_phone || '-';
+    var doctorPin = a.doctor_pin || '-';
+    var doctorName = a.doctor_name || '-';
+    var isSelected = selectedIds.has(a.session_id);
+    var selectedClass = isSelected ? 'selected' : '';
+    var selectableClass = selectionMode ? 'selectable' : '';
+
+    var clickAction = selectionMode ? 'toggleSelect(' + idx + ')' : 'showAssessmentDetail(' + idx + ')';
+
+    return '<div class="assessment-card ' + riskClass + ' ' + selectableClass + ' ' + selectedClass + '" onclick="' + clickAction + '">' +
+      (selectionMode ? '<div class="select-checkbox"></div>' : '') +
       '<div class="assessment-card-header">' +
         '<div class="assessment-patient">' + esc(patientName) + '</div>' +
         '<span class="risk-badge ' + (a.risk_level || 'none') + '">' + riskLabel + '</span>' +
       '</div>' +
       '<div class="assessment-card-body">' +
-        '<div class="assessment-field"><div class="label">日期</div><div class="value">' + formatDate(a.created_at) + '</div></div>' +
-        '<div class="assessment-field"><div class="label">医生PIN</div><div class="value">' + esc(a.doctor_pin || '-') + '</div></div>' +
-        '<div class="assessment-field"><div class="label">严重度</div><div class="value">' + (a.severity_score || '0') + '/5</div></div>' +
-        '<div class="assessment-field"><div class="label">致死性</div><div class="value">' + (a.lethality_level || '0') + '/6</div></div>' +
+        '<div class="assessment-field"><div class="label">患者电话</div><div class="value">' + esc(patientPhone) + '</div></div>' +
+        '<div class="assessment-field"><div class="label">医生</div><div class="value">' + esc(doctorName) + ' (PIN: ' + esc(doctorPin) + ')</div></div>' +
+        '<div class="assessment-field"><div class="label">评估日期</div><div class="value">' + formatDate(a.assessment_date || a.created_at) + '</div></div>' +
+        '<div class="assessment-field"><div class="label">风险等级</div><div class="value">' + riskLabel + '</div></div>' +
       '</div>' +
     '</div>';
   }).join('');
+
+  listEl.innerHTML = html;
 }
+
 
 function getRiskLabel(level) {
   var labels = {
@@ -625,9 +783,10 @@ function renderAssessmentDetail(a) {
   // Patient info section
   html += '<div class="assessment-section">';
   html += '<h3>👤 患者信息</h3>';
-  html += '<div class="question-item"><div class="question-label">姓名/电话</div><div class="question-value">' + esc(a.patient_name || a.phone_number || '-') + '</div></div>';
-  html += '<div class="question-item"><div class="question-label">评估日期</div><div class="question-value">' + formatDate(a.created_at) + '</div></div>';
-  html += '<div class="question-item"><div class="question-label">医生PIN</div><div class="question-value">' + esc(a.doctor_pin || '-') + '</div></div>';
+  html += '<div class="question-item"><div class="question-label">姓名/ID</div><div class="question-value">' + esc(a.patient_id || '-') + '</div></div>';
+  html += '<div class="question-item"><div class="question-label">手机号</div><div class="question-value">' + esc(a.patient_phone || '-') + '</div></div>';
+  html += '<div class="question-item"><div class="question-label">评估日期</div><div class="question-value">' + formatDate(a.assessment_date || a.created_at) + '</div></div>';
+  html += '<div class="question-item"><div class="question-label">评估医生</div><div class="question-value">' + esc(a.doctor_name || '-') + ' (PIN: ' + esc(a.doctor_pin || '-') + ')</div></div>';
   html += '</div>';
 
   // Ideation screening
